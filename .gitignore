@@ -37,3 +37,16 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+
+# Python tooling
+/.venv/
+__pycache__/
+*.py[cod]
+
+# Print exports and visual QA renders
+/output/print/
+/output/pdf/*.pdf
+/tmp/
+
+# Local-only working material
+/.local/

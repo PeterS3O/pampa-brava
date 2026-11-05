@@ -4,7 +4,7 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://pampa-brava.granddrake64.chatgpt.site'),
   title: 'Pampa Brava — Juego de mesa digital',
-  description: 'Prototipo digital jugable de Pampa Brava para dos jugadores.',
+  description: 'Prototipo digital jugable de Pampa Brava para dos, tres o cuatro jugadores.',
   openGraph: {
     title: 'Pampa Brava — Juego de mesa digital',
     description: 'La tierra decide. La astucia conquista.',
