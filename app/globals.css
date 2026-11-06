@@ -2307,7 +2307,7 @@ h1,h2 { margin:0; } h1 { font-size:28px;letter-spacing:.04em; } h2 { font-size:2
     border-radius:15px!important;
   }
   .duel-panel-shell.duel-decision .duel-panel{
-    padding:58px 9px 8px!important;
+    padding:10px 9px 8px!important;
     gap:4px;
   }
   .duel-timer{
@@ -2687,4 +2687,47 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
 }
 @media(max-width:900px){
   .mobile-quick-bar:not(.has-roll) .quick-terrain-result b{white-space:normal!important;text-overflow:clip;overflow-wrap:anywhere;font-size:9px!important;line-height:1}
+}
+
+/* ux-mobile-v2 · boceto móvil: tablero libre, cartas de naturaleza como miniaturas
+   sobre el tablero y sacrificio dentro de la franja de gauchos. El panel de acciones
+   solo aparece como franja cuando hay una jugada en curso, o como hoja al tocar una carta. */
+.mobile-nature-tray,.camp-sacrifice{display:none}
+@media(max-width:900px){
+  .play-layout{--mobile-board-split:calc(100% - 200px);--mobile-flow-h:0px;--mobile-camp-height:132px}
+  .play-layout:has(.action-panel.has-action-flow){--mobile-board-split:calc(100% - 262px);--mobile-flow-h:62px}
+
+  .camp-ground.mobile-sheet{top:calc(var(--mobile-board-split) + 60px + var(--mobile-flow-h))!important;bottom:auto!important;height:var(--mobile-camp-height)!important;min-height:0!important;padding:6px 8px 8px!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;gap:4px}
+  .camp-ground .camp-heading{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
+  .camp-ground .camp-heading>span{font-size:14px}
+  .camp-ground .camp-heading i{font-size:8px;text-align:right}
+  .camp-ground .camp-pieces{min-height:0;flex:1 1 auto;width:100%;overflow-x:auto}
+  .camp-sacrifice{display:inline-flex;align-items:center;min-height:30px;margin-left:auto;padding:4px 8px;border:1px solid #6d4a2b;border-radius:7px;background:#5b3a22;color:#fff7df;font:800 10px/1.1 Arial,sans-serif;cursor:pointer}
+  .camp-sacrifice:disabled{background:#c8b796;border-color:#a8956f;color:#5d4d38;cursor:default}
+
+  .mobile-nature-tray{display:grid;position:absolute;top:10px;right:8px;z-index:4;gap:6px;width:82px}
+  .mini-nature{display:grid;gap:2px;min-height:50px;padding:5px 6px;border:2px solid #7c5a34;border-radius:9px;background:#fff6df;color:#3d2a18;text-align:left;cursor:pointer;box-shadow:0 2px 5px #3a26143d}
+  .mini-nature small{font:800 7px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#7c5a34}
+  .mini-nature b{font:700 11px/1.1 Georgia,serif}
+  .mini-nature.armed{border-color:#e0a22e;background:#ffe9a8}
+
+  .action-panel.mobile-sheet:not(.sheet-open):not(.has-action-flow){display:none!important}
+  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open){top:calc(var(--mobile-board-split) + 60px)!important;bottom:auto!important;left:6px!important;right:6px!important;width:auto!important;height:var(--mobile-flow-h)!important;min-height:0!important;max-height:none!important;display:flex!important;flex-direction:column;justify-content:center;padding:4px 8px!important;overflow:hidden!important;opacity:1!important;pointer-events:auto!important;transform:none!important;border-radius:10px!important}
+  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open)>:not(.action-flow){display:none!important}
+  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open) .action-flow{margin:0;padding:0;gap:4px}
+  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open) .action-flow .hint{min-height:0;font-size:11px;line-height:1.25}
+  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open) .action-flow>.primary:first-child{margin-top:0}
+
+  .action-panel.mobile-sheet.sheet-open{z-index:95!important;top:auto!important;bottom:4px!important;left:4px!important;right:4px!important;width:auto!important;height:auto!important;max-height:calc(100dvh - 150px)!important;display:flex!important;opacity:1!important;pointer-events:auto!important;transform:none!important;overflow:auto!important}
+}
+@media(max-width:900px){
+  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open)>.action-flow{display:flex!important;flex-direction:column;justify-content:center;gap:2px;min-height:0;max-height:none;overflow:hidden;padding:0!important;border:0;background:transparent}
+  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open)>.action-flow:not(.action-flow-escape)>button{display:none!important}
+  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open)>.action-flow .hint{display:block!important;margin:0;padding:0}
+}
+@media(max-width:900px){
+  .action-panel.mobile-sheet.sheet-open>*{flex:0 0 auto!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}
+  .action-panel.mobile-sheet.sheet-open .nature-vault{overflow:visible!important}
+  .action-panel.mobile-sheet.sheet-open .nature-hand{height:auto!important;min-height:0!important;overflow:visible!important}
+  .action-panel.mobile-sheet.sheet-open .nature-card{height:auto!important;min-height:0!important;overflow:visible!important}
 }
