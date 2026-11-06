@@ -2644,113 +2644,126 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
   }
 }
 
-/* ux-mobile-v1 · mejoras de UX mobile (data-ux-version="mobile-optimizada-v1") */
-.ux-version-tag{display:inline-flex;align-items:center;margin-left:10px;padding:3px 8px;border-radius:999px;border:1px solid #e9d49a88;background:#e9d49a1f;color:#f1dfa6;font:700 9px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
-.ux-setup-hint{margin:2px 0 10px;text-align:center;font:600 12px/1.4 Arial,sans-serif;color:#6b5030}
+/* =====================================================================
+   Capa mobile unificada. Reemplaza los bloques ux-mobile-v1 a v4.
+   Todo ajuste de la interfaz mobile de esta etapa vive acá, ordenado por zona.
+   Va al final del archivo para ganarle a las reglas heredadas.
+   ===================================================================== */
+
+/* — Compartido (todas las resoluciones) — */
 .ux-confirm-armed{outline:2px solid currentColor;outline-offset:2px;animation:ux-pulse 1s ease-in-out infinite}
 @keyframes ux-pulse{50%{outline-color:transparent}}
+.mobile-nature-tray,.camp-sacrifice,.camp-pulperia,.board-zoom-toggle,.duel-mini-board{display:none}
+
+/* Lobby: interruptor de Pulpería con estado visible */
+.lobby-card .setup-choice .setup-switch,.setup-choice .setup-switch{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:6px 12px;border:1px solid #6d4a2b;border-radius:999px;background:#fff8e8;color:#3d2a18;font:800 12px/1 Arial,sans-serif;white-space:nowrap;cursor:pointer}
+.setup-switch-track{position:relative;flex:0 0 auto;width:38px;height:22px;border-radius:999px;background:#bfae8c;transition:background .2s}
+.setup-switch-track i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0004;transition:transform .2s}
+.setup-switch.on .setup-switch-track{background:#2f6b3f}
+.setup-switch.on .setup-switch-track i{transform:translateX(16px)}
+
 @media(max-width:900px){
-  .topbar .ux-help-button{display:inline-flex!important;min-height:38px;padding:7px 10px;font-size:11px}
-  .ux-version-tag{margin-left:0;font-size:8px;padding:2px 6px}
+  /* — Cabecera — */
+  .topbar{z-index:5}
+  .topbar .ux-help-button{display:inline-flex!important;align-self:center;align-items:center;justify-content:center;flex:0 0 auto;height:44px;min-height:44px;padding:0 12px;font-size:12px;line-height:1;white-space:nowrap}
+
+  /* — Distribución: tablero / barra de juego / gauchos — */
+  .play-layout{--mobile-board-split:calc(100% - 214px);--mobile-camp-height:146px}
+  .board-wrap{padding-left:2px;padding-right:2px}
+  .board-stage{--mobile-hex-w:min(calc((100vw - 6px)*.128),calc((100dvh - 176px)*.137))}
+
+  /* Ampliar tablero: casillas según el alto disponible y paneo horizontal */
+  .board-zoom-toggle{display:inline-flex;position:absolute;top:10px;left:8px;z-index:4;align-items:center;min-height:44px;padding:0 12px;border:2px solid #7c5a34;border-radius:9px;background:#fff6df;color:#3d2a18;font:800 12px/1 Arial,sans-serif;box-shadow:0 2px 5px #3a26143d;cursor:pointer}
+  .board-zoom-toggle[aria-pressed="true"]{background:#3d2a18;color:#fff6df}
+  .play-layout.board-zoomed .board-wrap{overflow-x:auto!important;overflow-y:hidden!important;justify-content:flex-start!important;overscroll-behavior-x:contain}
+  .play-layout.board-zoomed .terrain-legend{display:none!important}
+  .play-layout.board-zoomed .board-stage{--mobile-hex-w:calc((100dvh - 330px)/7.3);flex:0 0 auto;width:max-content!important;min-width:max-content!important;margin:auto}
+
+  /* Tablero: textos legibles */
   .goal small{font-size:9px!important}
   .goal b{font-size:10px!important}
   .terrain-legend{font-size:10px!important}
-  .board-token>b{font-size:7.5px}
-  .board-token .combat-stats em{font-size:6.5px}
-  .quick-die b,.quick-terrain-result b{white-space:normal;overflow-wrap:anywhere;line-height:1.05;font-size:10px}
-  .quick-terrain-result{min-width:0}
-  .mobile-sheet-close,.turn-status-panel .mobile-sheet-close{width:44px;height:44px;top:4px;right:4px}
-  .nature-sacrifice button,.nature-sacrifice .sacrifice-confirm button{min-height:44px}
-  .standing-piece{min-width:44px;min-height:44px}
-  .turn-status-panel small,.action-panel small{font-size:9.5px}
-  .turn-timer small,.rival-hand-count small{font-size:9px}
-  .player-name-field small{font-size:12px}
-}
-.ux-version-tag-setup{margin:0 auto 6px}
-@media(max-width:900px){
-  .topbar .ux-version-tag{order:6;flex:0 0 100%;justify-content:center;margin:0;padding:2px 8px}
-  .topbar .ux-help-button{white-space:nowrap}
-}
-@media(max-width:900px){
-  .topbar .ux-version-tag{position:absolute;right:8px;bottom:-9px;z-index:3;margin:0;order:0;flex:none;padding:2px 7px;font-size:7.5px;box-shadow:0 1px 3px #0005;background:#2b3a2fee;border-color:#e9d49a99}
-}
-@media(max-width:900px){
-  .topbar .ux-version-tag{left:8px;right:auto;bottom:-10px}
-  .topbar .ux-help-button{flex:0 0 auto;height:34px;min-height:34px;padding:0 10px;white-space:nowrap}
-}
-@media(max-width:900px){
-  .topbar{z-index:5}
-  .topbar .ux-help-button{align-self:center;display:inline-flex!important;align-items:center;justify-content:center;line-height:1}
-}
-@media(max-width:900px){
-  .topbar .ux-version-tag{left:56px;right:auto;bottom:3px;top:auto;font-size:7px;padding:1px 6px}
-}
-@media(max-width:900px){
-  .mobile-quick-bar:not(.has-roll) .quick-terrain-result b{white-space:normal!important;text-overflow:clip;overflow-wrap:anywhere;font-size:9px!important;line-height:1}
-}
+  .board-token>b{font-size:8.5px}
+  .board-token .combat-stats em{font-size:8px}
 
-/* ux-mobile-v2 · boceto móvil: tablero libre, cartas de naturaleza como miniaturas
-   sobre el tablero y sacrificio dentro de la franja de gauchos. El panel de acciones
-   solo aparece como franja cuando hay una jugada en curso, o como hoja al tocar una carta. */
-.mobile-nature-tray,.camp-sacrifice{display:none}
-@media(max-width:900px){
-  .play-layout{--mobile-board-split:calc(100% - 200px);--mobile-flow-h:0px;--mobile-camp-height:132px}
-  .play-layout:has(.action-panel.has-action-flow){--mobile-board-split:calc(100% - 262px);--mobile-flow-h:62px}
-
-  .camp-ground.mobile-sheet{top:calc(var(--mobile-board-split) + 60px + var(--mobile-flow-h))!important;bottom:auto!important;height:var(--mobile-camp-height)!important;min-height:0!important;padding:6px 8px 8px!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;gap:4px}
-  .camp-ground .camp-heading{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0}
-  .camp-ground .camp-heading>span{font-size:14px}
-  .camp-ground .camp-heading i{font-size:8px;text-align:right}
-  .camp-ground .camp-pieces{min-height:0;flex:1 1 auto;width:100%;overflow-x:auto}
-  .camp-sacrifice{display:inline-flex;align-items:center;min-height:30px;margin-left:auto;padding:4px 8px;border:1px solid #6d4a2b;border-radius:7px;background:#5b3a22;color:#fff7df;font:800 10px/1.1 Arial,sans-serif;cursor:pointer}
-  .camp-sacrifice:disabled{background:#c8b796;border-color:#a8956f;color:#5d4d38;cursor:default}
-
-  .mobile-nature-tray{display:grid;position:absolute;top:10px;right:8px;z-index:4;gap:6px;width:82px}
-  .mini-nature{display:grid;gap:2px;min-height:50px;padding:5px 6px;border:2px solid #7c5a34;border-radius:9px;background:#fff6df;color:#3d2a18;text-align:left;cursor:pointer;box-shadow:0 2px 5px #3a26143d}
-  .mini-nature small{font:800 7px/1 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#7c5a34}
-  .mini-nature b{font:700 11px/1.1 Georgia,serif}
-  .mini-nature.armed{border-color:#e0a22e;background:#ffe9a8}
-
-  .action-panel.mobile-sheet:not(.sheet-open):not(.has-action-flow){display:none!important}
-  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open){top:calc(var(--mobile-board-split) + 60px)!important;bottom:auto!important;left:6px!important;right:6px!important;width:auto!important;height:var(--mobile-flow-h)!important;min-height:0!important;max-height:none!important;display:flex!important;flex-direction:column;justify-content:center;padding:4px 8px!important;overflow:hidden!important;opacity:1!important;pointer-events:auto!important;transform:none!important;border-radius:10px!important}
-  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open)>:not(.action-flow){display:none!important}
-  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open) .action-flow{margin:0;padding:0;gap:4px}
-  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open) .action-flow .hint{min-height:0;font-size:11px;line-height:1.25}
-  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open) .action-flow>.primary:first-child{margin-top:0}
-
-  .action-panel.mobile-sheet.sheet-open{z-index:95!important;top:auto!important;bottom:4px!important;left:4px!important;right:4px!important;width:auto!important;height:auto!important;max-height:calc(100dvh - 150px)!important;display:flex!important;opacity:1!important;pointer-events:auto!important;transform:none!important;overflow:auto!important}
-}
-@media(max-width:900px){
-  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open)>.action-flow{display:flex!important;flex-direction:column;justify-content:center;gap:2px;min-height:0;max-height:none;overflow:hidden;padding:0!important;border:0;background:transparent}
-  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open)>.action-flow:not(.action-flow-escape)>button{display:none!important}
-  .action-panel.mobile-sheet.has-action-flow:not(.sheet-open)>.action-flow .hint{display:block!important;margin:0;padding:0}
-}
-@media(max-width:900px){
-  .action-panel.mobile-sheet.sheet-open>*{flex:0 0 auto!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}
-  .action-panel.mobile-sheet.sheet-open .nature-vault{overflow:visible!important}
-  .action-panel.mobile-sheet.sheet-open .nature-hand{height:auto!important;min-height:0!important;overflow:visible!important}
-  .action-panel.mobile-sheet.sheet-open .nature-card{height:auto!important;min-height:0!important;overflow:visible!important}
-}
-
-/* ux-mobile-v3 · tablero a todo el ancho y miniaturas de naturaleza con color por tipo */
-@media(max-width:900px){
-  .board-stage{--mobile-hex-w:min(calc((100vw - 6px)*.128),calc((100dvh - 176px)*.137))}
-  .board-wrap{padding-left:2px;padding-right:2px}
-  .mini-nature{position:relative;padding-left:11px;--nc:#8a6a3f}
+  /* Cartas de naturaleza como miniaturas sobre el tablero */
+  .mobile-nature-tray{display:grid;position:absolute;top:10px;right:8px;z-index:4;gap:6px;width:86px}
+  .mini-nature{position:relative;display:grid;gap:3px;min-height:52px;padding:6px 6px 6px 12px;border:2px solid #7c5a34;border-radius:9px;background:#fff6df;color:#3d2a18;text-align:left;cursor:pointer;box-shadow:0 2px 5px #3a26143d;--nc:#8a6a3f}
   .mini-nature::before{content:"";position:absolute;top:0;bottom:0;left:0;width:6px;border-radius:7px 0 0 7px;background:var(--nc)}
   .mini-nature.pampa{--nc:#c99a2e}
   .mini-nature.monte{--nc:#2f6b3f}
   .mini-nature.sierra{--nc:#66737a}
   .mini-nature.cabalgata{--nc:#8a5a2b}
   .mini-nature.boleadora{--nc:#7a3b2e}
-  .mini-nature small{color:#7c5a34}
-  .mini-nature b{display:block}
-  .camp-sacrifice:not(:disabled){background:#6d4426;box-shadow:0 2px 0 #3d2715}
-}
+  .mini-nature small{font:800 9px/1 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#7c5a34}
+  .mini-nature b{display:block;font:700 12px/1.1 Georgia,serif}
+  .mini-nature.armed{border-color:#e0a22e;background:#ffe9a8}
 
-/* ux-mobile-v4 · decisiones del duelo en mobile: el espacio sobrante va a las cartas
-   de naturaleza y a las acciones, sin desplazamiento. */
-@media(max-width:900px){
+  /* Barra de juego */
+  .quick-die b,.quick-terrain-result b{white-space:normal;overflow-wrap:anywhere;line-height:1.05;font-size:10px}
+  .quick-terrain-result{min-width:0}
+  .mobile-quick-bar small{font-size:9px!important}
+  .mobile-quick-bar .quick-turn-state small{font-size:10px!important}
+  .mobile-quick-bar.has-roll .quick-terrain-result small{font-size:9px!important}
+  .mobile-quick-bar .quick-turn-state i{font-size:11px}
+  .mobile-quick-bar:not(.has-roll) .quick-terrain-result b{white-space:normal!important;text-overflow:clip;overflow-wrap:anywhere;font-size:10px!important;line-height:1}
+
+  /* Franja de gauchos con sacrificio y Pulpería */
+  .camp-ground.mobile-sheet{top:calc(var(--mobile-board-split) + 60px)!important;bottom:auto!important;height:var(--mobile-camp-height)!important;min-height:0!important;padding:6px 8px 8px!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;gap:4px}
+  .camp-ground .camp-heading{display:flex;align-items:center;gap:6px;min-width:0}
+  .camp-ground .camp-heading>span{font-size:14px}
+  .camp-ground .camp-heading i{display:none}
+  .camp-ground .camp-pieces{min-height:0;flex:1 1 auto;width:100%;overflow-x:auto}
+  .camp-sacrifice,.camp-pulperia{display:inline-flex;align-items:center;min-height:44px;padding:4px 10px;border:1px solid #6d4a2b;border-radius:8px;background:#6d4426;color:#fff7df;font:800 11px/1.1 Arial,sans-serif;box-shadow:0 2px 0 #3d2715;cursor:pointer}
+  .camp-sacrifice{margin-left:auto}
+  .camp-pulperia{margin-left:auto;background:#7a2f25}
+  .camp-pulperia+.camp-sacrifice{margin-left:0}
+  .camp-sacrifice:disabled{background:#c8b796;border-color:#a8956f;color:#5d4d38;box-shadow:none;cursor:default}
+  .standing-piece{min-width:44px;min-height:44px}
+  .camp-ground .standing-piece>b{font-size:9px!important;line-height:1.1}
+  .camp-ground .combat-stats em{font-size:9px!important;line-height:1.1}
+
+  /* Hojas: turno y cartas de naturaleza */
+  .mobile-sheet-close,.turn-status-panel .mobile-sheet-close{width:44px;height:44px;top:4px;right:4px}
+  .turn-status-panel small,.action-panel small{font-size:9.5px}
+  .turn-timer small,.rival-hand-count small{font-size:9px}
+  .player-name-field small{font-size:12px}
+  .nature-sacrifice button,.nature-sacrifice .sacrifice-confirm button{min-height:44px}
+
+  /* El panel de acciones no ocupa lugar fijo: solo se abre como hoja */
+  .action-panel.mobile-sheet:not(.sheet-open){display:none!important}
+  .action-panel.mobile-sheet.sheet-open{z-index:95!important;top:auto!important;bottom:4px!important;left:4px!important;right:4px!important;width:auto!important;height:auto!important;max-height:calc(100dvh - 150px)!important;display:flex!important;flex-direction:column;gap:8px;padding:48px 10px 12px!important;opacity:1!important;pointer-events:auto!important;transform:none!important;overflow:auto!important}
+  .action-panel.mobile-sheet.sheet-open>*{flex:0 0 auto!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}
+  .action-panel.mobile-sheet.sheet-open>.action-flow{display:none!important}
+  .action-panel.mobile-sheet.sheet-open>.mobile-sheet-close{display:grid!important;place-items:center;position:absolute!important;top:4px;right:4px;flex:none!important;width:44px!important;height:44px!important;font-size:22px}
+  .action-panel.mobile-sheet.sheet-open .sacrifice-confirm>button{min-height:46px;font-size:13px!important}
+  .action-panel.mobile-sheet.sheet-open .nature-sacrifice b{font-size:15px}
+  .action-panel.mobile-sheet.sheet-open .nature-sacrifice small{font-size:11px}
+  .action-panel.mobile-sheet.sheet-open .nature-vault{display:flex!important;flex-direction:column;gap:10px;overflow:visible!important}
+  .action-panel.mobile-sheet.sheet-open .nature-heading{display:none}
+  .action-panel.mobile-sheet.sheet-open .nature-hand{display:flex!important;justify-content:center;gap:10px;height:auto!important;min-height:0!important;overflow:visible!important}
+  .action-panel.mobile-sheet.sheet-open .nature-card{flex:0 1 140px!important;display:flex!important;flex-direction:column;align-items:center;gap:6px;width:auto!important;height:auto!important;min-height:0!important;overflow:visible!important}
+  .action-panel.mobile-sheet.sheet-open .nature-card>.nature-card-art{width:100%!important;height:auto!important;max-height:190px!important;aspect-ratio:5/7}
+  .action-panel.mobile-sheet.sheet-open .nature-card-action{width:100%;min-height:44px}
+  .action-panel.mobile-sheet.sheet-open .nature-sacrifice{display:flex!important;flex-direction:column;align-items:stretch;gap:8px;width:auto!important;height:auto!important}
+  .action-panel.mobile-sheet.sheet-open .sacrifice-confirm{display:flex;flex-direction:column;gap:8px}
+  .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+  .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices button{display:flex!important;flex-direction:column;align-items:center;gap:6px;height:auto!important;padding:8px!important;font-size:12px}
+  .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices .nature-card-art{width:84px!important;height:auto!important;max-height:none!important;aspect-ratio:5/7}
+
+  /* — Duelo — */
+  /* Mini tablero para ubicar el duelo sin ver el tablero completo */
+  .duel-panel-shell .duel-hand-info:has(.duel-mini-board){grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) auto}
+  .duel-mini-board{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:5px;border-radius:7px;background:#ead9ba8c}
+  .duel-mini-board .mini-row{display:flex;gap:1px}
+  .mini-cell{display:block;width:8px;height:8px;border-radius:2px;background:#c9a24e}
+  .mini-cell.monte{background:#3f7a4c}
+  .mini-cell.sierra{background:#7d8a91}
+  .mini-cell.pulperia{background:#a2493a}
+  .mini-cell.from{position:relative;z-index:1;background:#f2b632;box-shadow:0 0 0 2px #5b3a12}
+  .mini-cell.target{position:relative;z-index:1;background:#d9473a;box-shadow:0 0 0 2px #5a1a12}
+
+  /* Decisiones: el espacio sobrante va a las cartas y a las acciones, sin desplazamiento */
   .duel-panel-shell.duel-decision .duel-panel{justify-content:flex-start}
   .duel-panel-shell.duel-decision .duel-hand-info{margin:0}
   .duel-panel-shell.duel-decision .duel-hand-info .force-card{width:56px;height:78px}
@@ -2760,16 +2773,23 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
   .duel-panel-shell.duel-decision .gaucho-dialogue{align-items:center}
   .duel-panel-shell.duel-decision .choice-grid.nature-choices{flex:1 1 auto;min-height:62px;align-content:stretch;grid-auto-rows:minmax(0,1fr)}
   .duel-panel-shell.duel-decision .nature-choices.illustrated button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px 8px;height:100%}
-  .duel-panel-shell.duel-decision .nature-choices.illustrated button>.nature-card-art{aspect-ratio:5/7;max-width:100%;flex:0 0 auto;height:min(200px,44vh);max-height:200px!important;width:auto}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>.nature-card-art{flex:0 0 auto;width:auto;height:min(200px,44vh);max-height:200px!important;max-width:100%;aspect-ratio:5/7}
   .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child{text-align:center}
   .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child b{font-size:12px}
   .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child small{font-size:10px}
   .duel-panel-shell.duel-decision .duel-actions{gap:7px}
   .duel-panel-shell.duel-decision .duel-actions button{min-height:52px;font-size:11px}
-}
-@media(max-width:900px){
-  .duel-panel-shell.duel-decision .duel-panel:has(.duel-force-cards){justify-content:flex-start}
   .duel-panel-shell.duel-decision .duel-force-cards{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:10px;margin:4px 0}
   .duel-panel-shell.duel-decision .duel-force-cards .force-card{width:min(36vw,150px);height:auto;aspect-ratio:5/7}
   .duel-panel-shell.duel-decision .duel-panel:not(:has(.nature-choices)) .challenge-status{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:12px 6px;border:0;background:transparent;text-align:center;font-size:17px;line-height:1.45;color:#3f2e1c}
+}
+
+/* — Escritorio: el tablero no queda debajo del panel de turno — */
+@media(min-width:901px){
+  .board-wrap{
+    --turn-rail:calc(clamp(205px,20vw,254px) + 20px);
+    --hex-w:clamp(48px,min(calc((100vh - 105px)/7.3),calc((100vw - var(--side-rail) - 44px)/8.15),calc((100vw - var(--side-rail) - 18px - var(--turn-rail))/6.6)),176px);
+  }
+  /* La pirámide se centra en el hueco entre el panel de turno y la columna derecha */
+  .board-stage{left:calc(2*(var(--turn-rail) + 4px + var(--hex-w)*2.5) - (100vw - var(--side-rail)))}
 }
