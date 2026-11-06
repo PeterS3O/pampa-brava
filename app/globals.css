@@ -2731,3 +2731,45 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
   .action-panel.mobile-sheet.sheet-open .nature-hand{height:auto!important;min-height:0!important;overflow:visible!important}
   .action-panel.mobile-sheet.sheet-open .nature-card{height:auto!important;min-height:0!important;overflow:visible!important}
 }
+
+/* ux-mobile-v3 · tablero a todo el ancho y miniaturas de naturaleza con color por tipo */
+@media(max-width:900px){
+  .board-stage{--mobile-hex-w:min(calc((100vw - 6px)*.128),calc((100dvh - 176px)*.137))}
+  .board-wrap{padding-left:2px;padding-right:2px}
+  .mini-nature{position:relative;padding-left:11px;--nc:#8a6a3f}
+  .mini-nature::before{content:"";position:absolute;top:0;bottom:0;left:0;width:6px;border-radius:7px 0 0 7px;background:var(--nc)}
+  .mini-nature.pampa{--nc:#c99a2e}
+  .mini-nature.monte{--nc:#2f6b3f}
+  .mini-nature.sierra{--nc:#66737a}
+  .mini-nature.cabalgata{--nc:#8a5a2b}
+  .mini-nature.boleadora{--nc:#7a3b2e}
+  .mini-nature small{color:#7c5a34}
+  .mini-nature b{display:block}
+  .camp-sacrifice:not(:disabled){background:#6d4426;box-shadow:0 2px 0 #3d2715}
+}
+
+/* ux-mobile-v4 · decisiones del duelo en mobile: el espacio sobrante va a las cartas
+   de naturaleza y a las acciones, sin desplazamiento. */
+@media(max-width:900px){
+  .duel-panel-shell.duel-decision .duel-panel{justify-content:flex-start}
+  .duel-panel-shell.duel-decision .duel-hand-info{margin:0}
+  .duel-panel-shell.duel-decision .duel-hand-info .force-card{width:56px;height:78px}
+  .duel-panel-shell.duel-decision .duel-hand-info b{font-size:13px}
+  .duel-panel-shell.duel-decision .challenge-status,
+  .duel-panel-shell.duel-decision .duel-explainer{font-size:12px!important;line-height:1.4}
+  .duel-panel-shell.duel-decision .gaucho-dialogue{align-items:center}
+  .duel-panel-shell.duel-decision .choice-grid.nature-choices{flex:1 1 auto;min-height:62px;align-content:stretch;grid-auto-rows:minmax(0,1fr)}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px 8px;height:100%}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>.nature-card-art{aspect-ratio:5/7;max-width:100%;flex:0 0 auto;height:min(200px,44vh);max-height:200px!important;width:auto}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child{text-align:center}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child b{font-size:12px}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child small{font-size:10px}
+  .duel-panel-shell.duel-decision .duel-actions{gap:7px}
+  .duel-panel-shell.duel-decision .duel-actions button{min-height:52px;font-size:11px}
+}
+@media(max-width:900px){
+  .duel-panel-shell.duel-decision .duel-panel:has(.duel-force-cards){justify-content:flex-start}
+  .duel-panel-shell.duel-decision .duel-force-cards{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:10px;margin:4px 0}
+  .duel-panel-shell.duel-decision .duel-force-cards .force-card{width:min(36vw,150px);height:auto;aspect-ratio:5/7}
+  .duel-panel-shell.duel-decision .duel-panel:not(:has(.nature-choices)) .challenge-status{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:12px 6px;border:0;background:transparent;text-align:center;font-size:17px;line-height:1.45;color:#3f2e1c}
+}
