@@ -3,7 +3,24 @@
 Prototipo digital jugable de Pampa Brava, con partidas de 2, 3 y 4 jugadores, salas online, duelos por cartas y componentes físicos para impresión.
 
 - Juego publicado: <https://pampa-brava.sanchezvallduvi.chatgpt.site/>
+- Código y colaboración: <https://github.com/PeterS3O/pampa-brava>
 - Reglamento vigente: [`REGLAMENTO.md`](REGLAMENTO.md)
+
+El repositorio de GitHub es la fuente principal del proyecto. El sitio publicado se mantiene como la versión estable y sólo se actualiza después de revisar los cambios integrados en `main`.
+
+## Trabajar completamente desde GitHub
+
+La forma más simple es usar GitHub Codespaces:
+
+1. Abrir el repositorio en GitHub.
+2. Elegir **Code → Codespaces → Create codespace on main**.
+3. Esperar a que termine la instalación automática.
+4. Ejecutar `npm run dev` en la terminal del Codespace.
+5. Abrir la previsualización del puerto 3000.
+
+Desde allí se puede editar, probar, crear ramas, hacer commits y abrir Pull Requests sin instalar el proyecto en otra computadora.
+
+Cada push y cada Pull Request ejecuta automáticamente las pruebas, el lint y la compilación mediante GitHub Actions. Un cambio no debería integrarse si alguna de esas comprobaciones falla.
 
 ## Puesta en marcha
 
@@ -59,11 +76,13 @@ Los resultados quedan en `output/pdf/`. Esos archivos pueden compartirse mediant
 
 ## Forma de colaboración
 
-1. Actualizar la rama estable `main`.
-2. Crear una rama corta para el cambio: `feature/nombre`, `fix/nombre` o `art/nombre`.
-3. Implementar y comprobar el cambio localmente.
-4. Ejecutar `npm test` y `npm run build`.
-5. Abrir un Pull Request con capturas cuando el cambio sea visual.
-6. Publicar el sitio solamente después de integrar el cambio en la rama estable.
+1. Abrir el repositorio localmente o mediante Codespaces.
+2. Actualizar la rama estable `main`.
+3. Crear una rama corta para el cambio: `feature/nombre`, `fix/nombre` o `art/nombre`.
+4. Implementar y comprobar el cambio.
+5. Ejecutar `npm test`, `npm run lint` y `npm run build`.
+6. Abrir un Pull Request con capturas cuando el cambio sea visual.
+7. Integrar el Pull Request después de que GitHub complete las verificaciones.
+8. Publicar el sitio solamente después de integrar el cambio en la rama estable.
 
 Más detalles en [`CONTRIBUTING.md`](CONTRIBUTING.md).

@@ -4,7 +4,10 @@
 
 - El reglamento funcional está en `REGLAMENTO.md`.
 - La rama `main` representa la versión estable del juego.
+- GitHub es la fuente principal del proyecto; evitá trabajar sobre copias que no estén sincronizadas.
 - No mezcles cambios de reglas, rediseños visuales y exportaciones de imprenta en un mismo Pull Request.
+
+Podés trabajar con una copia local o crear un Codespace desde el botón **Code** del repositorio. El Codespace instala las dependencias automáticamente y permite ejecutar `npm run dev` desde el navegador.
 
 ## Ramas
 
@@ -34,6 +37,7 @@ No deben versionarse:
 
 - [ ] El cambio tiene un propósito único y está explicado.
 - [ ] `npm test` finaliza correctamente.
+- [ ] `npm run lint` finaliza correctamente.
 - [ ] `npm run build` finaliza correctamente.
 - [ ] Los cambios visuales incluyen captura de escritorio y móvil.
 - [ ] Si cambia una regla, también se actualizaron las pruebas y `REGLAMENTO.md`.
