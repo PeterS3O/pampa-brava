@@ -2643,3 +2643,48 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
     font-size:15px;
   }
 }
+
+/* ux-mobile-v1 · mejoras de UX mobile (data-ux-version="mobile-optimizada-v1") */
+.ux-version-tag{display:inline-flex;align-items:center;margin-left:10px;padding:3px 8px;border-radius:999px;border:1px solid #e9d49a88;background:#e9d49a1f;color:#f1dfa6;font:700 9px/1.2 Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.ux-setup-hint{margin:2px 0 10px;text-align:center;font:600 12px/1.4 Arial,sans-serif;color:#6b5030}
+.ux-confirm-armed{outline:2px solid currentColor;outline-offset:2px;animation:ux-pulse 1s ease-in-out infinite}
+@keyframes ux-pulse{50%{outline-color:transparent}}
+@media(max-width:900px){
+  .topbar .ux-help-button{display:inline-flex!important;min-height:38px;padding:7px 10px;font-size:11px}
+  .ux-version-tag{margin-left:0;font-size:8px;padding:2px 6px}
+  .goal small{font-size:9px!important}
+  .goal b{font-size:10px!important}
+  .terrain-legend{font-size:10px!important}
+  .board-token>b{font-size:7.5px}
+  .board-token .combat-stats em{font-size:6.5px}
+  .quick-die b,.quick-terrain-result b{white-space:normal;overflow-wrap:anywhere;line-height:1.05;font-size:10px}
+  .quick-terrain-result{min-width:0}
+  .mobile-sheet-close,.turn-status-panel .mobile-sheet-close{width:44px;height:44px;top:4px;right:4px}
+  .nature-sacrifice button,.nature-sacrifice .sacrifice-confirm button{min-height:44px}
+  .standing-piece{min-width:44px;min-height:44px}
+  .turn-status-panel small,.action-panel small{font-size:9.5px}
+  .turn-timer small,.rival-hand-count small{font-size:9px}
+  .player-name-field small{font-size:12px}
+}
+.ux-version-tag-setup{margin:0 auto 6px}
+@media(max-width:900px){
+  .topbar .ux-version-tag{order:6;flex:0 0 100%;justify-content:center;margin:0;padding:2px 8px}
+  .topbar .ux-help-button{white-space:nowrap}
+}
+@media(max-width:900px){
+  .topbar .ux-version-tag{position:absolute;right:8px;bottom:-9px;z-index:3;margin:0;order:0;flex:none;padding:2px 7px;font-size:7.5px;box-shadow:0 1px 3px #0005;background:#2b3a2fee;border-color:#e9d49a99}
+}
+@media(max-width:900px){
+  .topbar .ux-version-tag{left:8px;right:auto;bottom:-10px}
+  .topbar .ux-help-button{flex:0 0 auto;height:34px;min-height:34px;padding:0 10px;white-space:nowrap}
+}
+@media(max-width:900px){
+  .topbar{z-index:5}
+  .topbar .ux-help-button{align-self:center;display:inline-flex!important;align-items:center;justify-content:center;line-height:1}
+}
+@media(max-width:900px){
+  .topbar .ux-version-tag{left:56px;right:auto;bottom:3px;top:auto;font-size:7px;padding:1px 6px}
+}
+@media(max-width:900px){
+  .mobile-quick-bar:not(.has-roll) .quick-terrain-result b{white-space:normal!important;text-overflow:clip;overflow-wrap:anywhere;font-size:9px!important;line-height:1}
+}
