@@ -2668,7 +2668,7 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
   .topbar .ux-help-button{display:inline-flex!important;align-self:center;align-items:center;justify-content:center;flex:0 0 auto;height:44px;min-height:44px;padding:0 12px;font-size:12px;line-height:1;white-space:nowrap}
 
   /* — Distribución: tablero / barra de juego / gauchos — */
-  .play-layout{--mobile-board-split:calc(100% - 214px);--mobile-camp-height:146px}
+  .play-layout{--mobile-board-split:calc(100% - 180px);--mobile-camp-height:112px}
   .board-wrap{padding-left:2px;padding-right:2px}
   .board-stage{--mobile-hex-w:min(calc((100vw - 6px)*.128),calc((100dvh - 176px)*.137))}
 
@@ -2710,15 +2710,14 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
 
   /* Franja de gauchos con sacrificio y Pulpería */
   .camp-ground.mobile-sheet{top:calc(var(--mobile-board-split) + 60px)!important;bottom:auto!important;height:var(--mobile-camp-height)!important;min-height:0!important;padding:6px 8px 8px!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;gap:4px}
-  .camp-ground .camp-heading{display:flex;align-items:center;gap:6px;min-width:0}
-  .camp-ground .camp-heading>span{font-size:14px}
-  .camp-ground .camp-heading i{display:none}
+  .camp-ground .camp-heading{display:none!important}
   .camp-ground .camp-pieces{min-height:0;flex:1 1 auto;width:100%;overflow-x:auto}
-  .camp-sacrifice,.camp-pulperia{display:inline-flex;align-items:center;min-height:44px;padding:4px 10px;border:1px solid #6d4a2b;border-radius:8px;background:#6d4426;color:#fff7df;font:800 11px/1.1 Arial,sans-serif;box-shadow:0 2px 0 #3d2715;cursor:pointer}
-  .camp-sacrifice{margin-left:auto}
-  .camp-pulperia{margin-left:auto;background:#7a2f25}
-  .camp-pulperia+.camp-sacrifice{margin-left:0}
-  .camp-sacrifice:disabled{background:#c8b796;border-color:#a8956f;color:#5d4d38;box-shadow:none;cursor:default}
+  /* Sacrificio y Pulpería viven en la columna de cartas, sobre el tablero */
+  .mobile-nature-tray .camp-sacrifice,.mobile-nature-tray .camp-pulperia{display:grid;gap:3px;width:100%;min-height:44px;padding:6px 6px 6px 8px;border:2px solid #4a2e17;border-radius:9px;background:#6d4426;color:#fff7df;text-align:left;box-shadow:0 2px 5px #3a26143d;cursor:pointer}
+  .mobile-nature-tray .camp-pulperia{background:#7a2f25;border-color:#4d1a14}
+  .mobile-nature-tray .camp-sacrifice small,.mobile-nature-tray .camp-pulperia small{font:800 9px/1 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+  .mobile-nature-tray .camp-sacrifice b,.mobile-nature-tray .camp-pulperia b{overflow:hidden;font:700 12px/1.1 Georgia,serif;white-space:nowrap;text-overflow:ellipsis}
+  .mobile-nature-tray .camp-sacrifice:disabled{border-color:#a8956f;background:#e6d8b8;color:#6b5a42;box-shadow:none;cursor:default}
   .standing-piece{min-width:44px;min-height:44px}
   .camp-ground .standing-piece>b{font-size:9px!important;line-height:1.1}
   .camp-ground .combat-stats em{font-size:9px!important;line-height:1.1}
@@ -2731,25 +2730,25 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
   .nature-sacrifice button,.nature-sacrifice .sacrifice-confirm button{min-height:44px}
 
   /* El panel de acciones no ocupa lugar fijo: solo se abre como hoja */
-  .action-panel.mobile-sheet:not(.sheet-open){display:none!important}
-  .action-panel.mobile-sheet.sheet-open{z-index:95!important;top:auto!important;bottom:4px!important;left:4px!important;right:4px!important;width:auto!important;height:auto!important;max-height:calc(100dvh - 150px)!important;display:flex!important;flex-direction:column;gap:8px;padding:48px 10px 12px!important;opacity:1!important;pointer-events:auto!important;transform:none!important;overflow:auto!important}
-  .action-panel.mobile-sheet.sheet-open>*{flex:0 0 auto!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}
-  .action-panel.mobile-sheet.sheet-open>.action-flow{display:none!important}
-  .action-panel.mobile-sheet.sheet-open>.mobile-sheet-close{display:grid!important;place-items:center;position:absolute!important;top:4px;right:4px;flex:none!important;width:44px!important;height:44px!important;font-size:22px}
-  .action-panel.mobile-sheet.sheet-open .sacrifice-confirm>button{min-height:46px;font-size:13px!important}
-  .action-panel.mobile-sheet.sheet-open .nature-sacrifice b{font-size:15px}
-  .action-panel.mobile-sheet.sheet-open .nature-sacrifice small{font-size:11px}
-  .action-panel.mobile-sheet.sheet-open .nature-vault{display:flex!important;flex-direction:column;gap:10px;overflow:visible!important}
-  .action-panel.mobile-sheet.sheet-open .nature-heading{display:none}
-  .action-panel.mobile-sheet.sheet-open .nature-hand{display:flex!important;justify-content:center;gap:10px;height:auto!important;min-height:0!important;overflow:visible!important}
-  .action-panel.mobile-sheet.sheet-open .nature-card{flex:0 1 140px!important;display:flex!important;flex-direction:column;align-items:center;gap:6px;width:auto!important;height:auto!important;min-height:0!important;overflow:visible!important}
-  .action-panel.mobile-sheet.sheet-open .nature-card>.nature-card-art{width:100%!important;height:auto!important;max-height:190px!important;aspect-ratio:5/7}
-  .action-panel.mobile-sheet.sheet-open .nature-card-action{width:100%;min-height:44px}
-  .action-panel.mobile-sheet.sheet-open .nature-sacrifice{display:flex!important;flex-direction:column;align-items:stretch;gap:8px;width:auto!important;height:auto!important}
-  .action-panel.mobile-sheet.sheet-open .sacrifice-confirm{display:flex;flex-direction:column;gap:8px}
-  .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
-  .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices button{display:flex!important;flex-direction:column;align-items:center;gap:6px;height:auto!important;padding:8px!important;font-size:12px}
-  .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices .nature-card-art{width:84px!important;height:auto!important;max-height:none!important;aspect-ratio:5/7}
+  .game-shell .play-layout .action-panel.mobile-sheet:not(.sheet-open){display:none!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open{z-index:95!important;top:auto!important;bottom:4px!important;left:4px!important;right:4px!important;width:auto!important;height:auto!important;max-height:calc(100dvh - 150px)!important;display:flex!important;flex-direction:column;gap:8px;padding:48px 10px 12px!important;opacity:1!important;pointer-events:auto!important;transform:none!important;overflow:auto!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open>*{flex:0 0 auto!important;min-height:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open>.action-flow{display:none!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open>.mobile-sheet-close{display:grid!important;place-items:center;position:absolute!important;top:4px;right:4px;flex:none!important;width:44px!important;height:44px!important;font-size:22px}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .sacrifice-confirm>button{min-height:46px;font-size:13px!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-sacrifice b{font-size:15px}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-sacrifice small{font-size:11px}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-vault{display:flex!important;flex-direction:column;gap:10px;overflow:visible!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-heading{display:none}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-hand{display:flex!important;justify-content:center;gap:10px;height:auto!important;min-height:0!important;overflow:visible!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-card{flex:0 1 140px!important;display:flex!important;flex-direction:column;align-items:center;gap:6px;width:auto!important;height:auto!important;min-height:0!important;overflow:visible!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-card>.nature-card-art{width:100%!important;height:auto!important;max-height:190px!important;aspect-ratio:5/7}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-card-action{width:100%;min-height:44px}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .nature-sacrifice{display:flex!important;flex-direction:column;align-items:stretch;gap:8px;width:auto!important;height:auto!important}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .sacrifice-confirm{display:flex;flex-direction:column;gap:8px}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices button{display:flex!important;flex-direction:column;align-items:center;gap:6px;height:auto!important;padding:8px!important;font-size:12px}
+  .game-shell .play-layout .action-panel.mobile-sheet.sheet-open .sacrifice-card-choices .nature-card-art{width:84px!important;height:auto!important;max-height:none!important;aspect-ratio:5/7}
 
   /* — Duelo — */
   /* Mini tablero para ubicar el duelo sin ver el tablero completo */
