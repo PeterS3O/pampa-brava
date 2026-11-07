@@ -26,10 +26,18 @@ type DuelNatureResult = { card: NatureCard; origin: Terrain | null; base: number
 type Outcome = { title: string; detail: string; attackerCard: DuelCard | null; defenderCard: DuelCard | null; loserId: string | null; replacementIds: string[]; replacementRefs?: CardRef[]; revealedTeamCards?: RevealedTeamCard[]; teamScores?: Partial<Record<PlayerId, number>>; retreat: number; winner: 'attacker' | 'defender' | 'tie'; stake: DuelStake; decidedBy?: 'cards' | 'raise-refusal'; attackerNature?: DuelNatureResult | null; defenderNature?: DuelNatureResult | null };
 type Duel = { attackerId: string; defenders: string[]; defenderId: string | null; target: Cell; from: Cell | null; entry: boolean; ranged: boolean; cardIndex: number | null; defenderCardIndex: number | null; death: boolean; stake: DuelStake; attackerRevealed: boolean; endsAt: number; turnRemainingMs: number; fourPlayer?: boolean; initiatorSeat?: FourSeat; responderSeat?: FourSeat; revealOrder?: FourSeat[]; revealIndex?: number; revealedSeats?: FourSeat[]; passedSeats?: FourSeat[]; raiseProposerSeat?: FourSeat; raiseResponderSeat?: FourSeat; pendingStake?: 'redouble' | 'death'; phase: 'choose-defender' | 'attacker' | 'defender' | 'defender-reveal' | 'redouble-answer' | 'death-confirmation' | 'team-reveal' | 'team-raise-answer' | 'team-outcome' | 'team-replacement' | 'outcome' | 'replacement'; outcome?: Outcome };
 type RetreatChoice = { pieceId: string; paths: (Cell | null)[][]; steps: number; resolution: 'duel' | 'refusal' | 'advance' | 'ranged-retreat'; attackerId: string };
-type PlayMode = 'online' | 'test' | null;
+type PlayMode = 'online' | 'test' | 'bot' | null;
 type MobileSheet = 'turn' | 'nature' | 'gauchos' | null;
 type RoomSession = { code: string; token: string; role: PlayerRole; status: 'waiting' | 'active'; version: number; playerCount: PlayerCount };
 type SharedSnapshot = { game: Game; duel: Duel | null; retreat: RetreatChoice | null };
+type BotTurnAction =
+  | { kind: 'roll' }
+  | { kind: 'goal'; pieceId: string }
+  | { kind: 'move'; pieceId: string; destination: Cell; natureIndex: number | null }
+  | { kind: 'challenge'; pieceId: string; target: Cell; natureIndex: number | null }
+  | { kind: 'redraw'; pieceId: string }
+  | { kind: 'stay'; pieceId: string }
+  | { kind: 'pass' };
 
 // Identificador de la versión con mejoras de UX mobile. Se muestra en la cabecera
 // y queda en data-ux-version para verificar qué build está viendo el usuario.
@@ -62,6 +70,15 @@ const TURN_DURATION_MS = 45_000;
 const DUEL_DURATION_MS = 45_000;
 const GAUCHO_NAMES: Record<PlayerId, string[]> = { blue: ['Zoilo', 'Santos', 'Anselmo', 'Eulogio'], red: ['Jacinto', 'Prudencio', 'Laureano', 'Rufino'], green: ['Molina', 'Tadeo', 'Cipriano', 'Doroteo'] };
 const TEAM_ORDER: PlayerId[] = ['blue', 'red', 'green'];
+const BOT_NAMES: Record<'red' | 'green', string> = { red: 'Bot Federal', green: 'Bot Cimarrón' };
+const GAUCHO_CHALLENGE_LINES = [
+  '¡No hay tranquera que frene mi paso! ¿Se anima a medir fuerzas?',
+  '¡Haga sonar la guitarra o desenvaina el facón! Esta tierra sabrá quién manda.',
+  '¡Que salga uno a sostener con coraje lo que defiende con la mirada!',
+  '¡No me venga con medias tintas! En la pampa se juega de frente.',
+  '¡Arrímese, aparcero! Hoy el coraje pesa más que la polvareda.',
+  '¡A la huella se la gana andando y al respeto, plantándose!',
+];
 const nextTeam = (current: PlayerId, teams: PlayerId[]) => teams[(teams.indexOf(current) + 1) % teams.length];
 const cardPower = (card: DuelCard | null) => card?.rank || 0;
 const duelCardLabel = (card: DuelCard | null) => card ? `Carta de valor ${card.rank}` : 'Sin carta';
@@ -429,6 +446,69 @@ function boleadoraTargetsForPiece(piece: Piece, pieces: Piece[], board?: BoardTe
   return pieces.filter(otherPiece => otherPiece.owner !== piece.owner && otherPiece.status === 'board' && !!otherPiece.position).map(otherPiece => otherPiece.position!);
 }
 
+function botAttackTargets(piece: Piece, game: Game) {
+  return attackTargetsForPiece(piece, game.pieces, game.board).filter(cell => {
+    const truce = game.truce;
+    return !truce || truce.blockerId !== piece.id || truce.expiresTurn !== game.turn || !game.pieces.some(other => other.id === truce.protectedId && other.status === 'board' && same(other.position, cell));
+  });
+}
+
+function botNatureIndexForTerrain(game: Game, piece: Piece, cell: Cell | null) {
+  if (!cell || cardPower(piece.card) >= 12) return null;
+  const terrain = game.board[cell.row]?.[cell.col];
+  if (!terrain || terrain === 'pulperia') return null;
+  const index = game.players[piece.owner].cards.findIndex(card => card === terrain);
+  return index >= 0 ? index : null;
+}
+
+function chooseBotTurnAction(game: Game, team: PlayerId): BotTurnAction {
+  if (game.current !== team || game.winner) return { kind: 'pass' };
+  const pieces = game.pieces.filter(piece => piece.owner === team && !['goal', 'sacrificed'].includes(piece.status));
+  if (!pieces.length) return { kind: 'pass' };
+  const open = (pieceId: string, cell: Cell) => !game.pieces.some(piece => piece.id !== pieceId && piece.status === 'board' && same(piece.position, cell));
+  const strongest = [...pieces].sort((a, b) => cardPower(b.card) - cardPower(a.card) || (b.position?.row ?? -1) - (a.position?.row ?? -1))[0];
+  const challengeOptions = pieces.flatMap(piece => botAttackTargets(piece, game).map(target => ({ piece, target })));
+  challengeOptions.sort((a, b) => cardPower(b.piece.card) - cardPower(a.piece.card) || (b.piece.position?.row ?? -1) - (a.piece.position?.row ?? -1));
+  const bestChallenge = challengeOptions[0];
+
+  const redraw = pieces.find(piece => piece.status === 'board' && !!piece.position && isPulperia(piece.position, game.board) && cardPower(piece.card) <= 3);
+  if (redraw && game.trucoDeck.length && game.activations.length === 0) return { kind: 'redraw', pieceId: redraw.id };
+
+  if (!game.roll) {
+    if (bestChallenge && cardPower(bestChallenge.piece.card) >= 9) return { kind: 'challenge', pieceId: bestChallenge.piece.id, target: bestChallenge.target, natureIndex: botNatureIndexForTerrain(game, bestChallenge.piece, bestChallenge.piece.position) };
+    const boleadoraIndex = game.players[team].cards.indexOf('boleadora');
+    const rangedTargets = boleadoraIndex >= 0 ? boleadoraTargetsForPiece(strongest, game.pieces, game.board) : [];
+    if (boleadoraIndex >= 0 && cardPower(strongest.card) >= 10 && rangedTargets.length) return { kind: 'challenge', pieceId: strongest.id, target: rangedTargets.sort((a, b) => b.row - a.row)[0], natureIndex: boleadoraIndex };
+    return { kind: 'roll' };
+  }
+
+  const goalPiece = pieces.find(piece => piece.status === 'board' && piece.position?.row === game.board.length - 1 && game.roll === game.goalTerrain);
+  if (goalPiece) return { kind: 'goal', pieceId: goalPiece.id };
+
+  const normalMoves = pieces.flatMap(piece => {
+    if (piece.status === 'camp') return game.board[0].map((_, col) => ({ row: 0, col })).filter(cell => game.board[0][cell.col] === game.roll && open(piece.id, cell)).map(destination => ({ piece, destination, natureIndex: null as number | null }));
+    if (piece.status !== 'board' || !piece.position) return [];
+    return neighbors(piece.position, game.board).filter(cell => canEnterByMovementDie(cell, game.board, game.roll!) && open(piece.id, cell)).map(destination => ({ piece, destination, natureIndex: null as number | null }));
+  });
+  const cabalgataIndex = game.players[team].cards.indexOf('cabalgata');
+  const rideMoves = cabalgataIndex < 0 ? [] : pieces.flatMap(piece => cabalgataTargets(piece, game.board).filter(cell => game.board[cell.row][cell.col] === game.roll && open(piece.id, cell)).map(destination => ({ piece, destination, natureIndex: cabalgataIndex })));
+  const moves = [...normalMoves, ...rideMoves].sort((a, b) => b.destination.row - a.destination.row || (b.natureIndex === null ? 1 : 0) - (a.natureIndex === null ? 1 : 0));
+
+  if (bestChallenge && (cardPower(bestChallenge.piece.card) >= 10 || !moves.length)) return { kind: 'challenge', pieceId: bestChallenge.piece.id, target: bestChallenge.target, natureIndex: botNatureIndexForTerrain(game, bestChallenge.piece, bestChallenge.piece.position) };
+  if (moves.length) return { kind: 'move', pieceId: moves[0].piece.id, destination: moves[0].destination, natureIndex: moves[0].natureIndex };
+
+  const boleadoraIndex = game.players[team].cards.indexOf('boleadora');
+  const rangedTargets = boleadoraIndex >= 0 ? boleadoraTargetsForPiece(strongest, game.pieces, game.board) : [];
+  if (boleadoraIndex >= 0 && rangedTargets.length) return { kind: 'challenge', pieceId: strongest.id, target: rangedTargets.sort((a, b) => b.row - a.row)[0], natureIndex: boleadoraIndex };
+  return strongest ? { kind: 'stay', pieceId: strongest.id } : { kind: 'pass' };
+}
+
+function duelChallengeLine(game: Game, duel: Duel) {
+  const attackerIndex = Number(duel.attackerId.match(/\d+$/)?.[0] || 0);
+  const defenderIndex = Number(duel.defenderId?.match(/\d+$/)?.[0] || 0);
+  return GAUCHO_CHALLENGE_LINES[(game.turn + attackerIndex * 3 + defenderIndex) % GAUCHO_CHALLENGE_LINES.length];
+}
+
 function canEnterByMovementDie(cell: Cell, board: BoardTerrain[][], roll: Terrain) {
   return isPulperia(cell, board) || board[cell.row][cell.col] === roll;
 }
@@ -541,10 +621,11 @@ export default function PampaBravaGame() {
   const writeInFlight = useRef(false);
   const [syncNotice, setSyncNotice] = useState('');
   const [syncRetry, setSyncRetry] = useState(0);
-  const viewerRole: PlayerRole = mode === 'test' ? game.current : room?.role || game.current;
+  const viewerRole: PlayerRole = mode === 'test' ? game.current : mode === 'bot' ? 'blue' : room?.role || game.current;
   const viewer = roleTeam(viewerRole);
   const currentRole: PlayerRole = game.playerCount === 4 && game.currentSeat ? game.currentSeat : game.current;
-  const isMyTurn = mode === 'test' || mode === 'online' && viewerRole === currentRole;
+  const isMyTurn = mode === 'test' || mode === 'bot' && game.current === viewer || mode === 'online' && viewerRole === currentRole;
+  const isBotTeam = (team: PlayerId) => mode === 'bot' && team !== viewer;
   const activeRoomCode = room?.code, activeRoomToken = room?.token, activeRoomStatus = room?.status, activeRoomVersion = room?.version;
   const player = game.players[viewer], selectedPiece = game.pieces.find(p => p.id === selected) || null;
   const availableNatureCount = (card: NatureCard) => game.deck.filter(value => value === card).length;
@@ -768,8 +849,8 @@ export default function PampaBravaGame() {
     const now = clock;
     setDuel({ attackerId: pieceId, defenders, defenderId: defenders.length === 1 ? defenders[0] : null, target, from, entry, ranged, cardIndex: ranged ? natureIndex : null, defenderCardIndex: null, death: false, stake: 'normal', attackerRevealed: false, endsAt: now + DUEL_DURATION_MS, turnRemainingMs: Math.max(0, game.turnEndsAt - now), fourPlayer, initiatorSeat, responderSeat: initiatorSeat ? nextFourSeat(initiatorSeat) : undefined, revealOrder: initiatorSeat ? seatsFrom(initiatorSeat) : undefined, revealIndex: 0, revealedSeats: [], passedSeats: [], phase: defenders.length > 1 ? 'choose-defender' : 'attacker' });
   };
-  const canControlAttacker = (state: Duel) => mode === 'test' || (state.fourPlayer ? viewerRole === state.initiatorSeat : game.pieces.find(piece => piece.id === state.attackerId)?.owner === viewer);
-  const canControlDefender = (state: Duel) => mode === 'test' || (state.fourPlayer ? viewerRole === state.responderSeat : !!state.defenderId && game.pieces.find(piece => piece.id === state.defenderId)?.owner === viewer);
+  const canControlAttacker = (state: Duel) => mode === 'test' || mode === 'bot' || (state.fourPlayer ? viewerRole === state.initiatorSeat : game.pieces.find(piece => piece.id === state.attackerId)?.owner === viewer);
+  const canControlDefender = (state: Duel) => mode === 'test' || mode === 'bot' || (state.fourPlayer ? viewerRole === state.responderSeat : !!state.defenderId && game.pieces.find(piece => piece.id === state.defenderId)?.owner === viewer);
   const cancelDuelPlanning = () => {
     if (!duel || !['choose-defender', 'attacker'].includes(duel.phase) || !canControlAttacker(duel)) return;
     setGame(state => resumeTurnTimer(state, duel));
@@ -1101,8 +1182,14 @@ export default function PampaBravaGame() {
   };
   const finishReplacement = () => { if (!duel || !['replacement', 'team-replacement'].includes(duel.phase) || !canControlAttacker(duel) && !canControlDefender(duel)) return; setGame(s => completeActivation(resumeTurnTimer(s, duel), duel.attackerId)); setDuel(null); setSelected(null); };
   const endTurn = () => { if (!isMyTurn || duel || retreat || game.winner) return; setGame(s => { const role: PlayerRole = s.playerCount === 4 && s.currentSeat ? s.currentSeat : s.current; return passTurn(s, `${playerDisplayName(s, role)} terminó su turno.`); }); setSelected(null); setRideIndex(null); };
-  const startTest = () => { setGame(makeGame(secureRandom, 2, withPulperia)); setRoom(null); setMode('test'); setSelected(null); setRideIndex(null); setDuel(null); setRetreat(null); setRoomError(''); };
-  const restart = () => { if (mode === 'online' && room && room.role !== (room.playerCount === 4 ? 'a' : 'blue')) return; const nextGame = makeGame(secureRandom, room?.playerCount || 2, game.pulperiaEnabled); setGame({ ...nextGame, participantNames: game.participantNames }); setSelected(null); setRideIndex(null); setDuel(null); setRetreat(null); };
+  const startBotGame = (playerCount: 2 | 3) => {
+    const initial = makeGame(secureRandom, playerCount, withPulperia);
+    const humanName = playerName.trim().slice(0, 24) || 'Vos';
+    const participantNames: Partial<Record<PlayerRole, string>> = { blue: humanName, red: BOT_NAMES.red, ...(playerCount === 3 ? { green: BOT_NAMES.green } : {}) };
+    setGame({ ...initial, participantNames });
+    setRoom(null); setMode('bot'); setSelected(null); setRideIndex(null); setPulperiaSwapTarget(null); setDuel(null); setRetreat(null); setRoomError('');
+  };
+  const restart = () => { if (mode === 'online' && room && room.role !== (room.playerCount === 4 ? 'a' : 'blue')) return; const nextGame = makeGame(secureRandom, room?.playerCount || game.playerCount || 2, game.pulperiaEnabled); setGame({ ...nextGame, participantNames: game.participantNames }); setSelected(null); setRideIndex(null); setDuel(null); setRetreat(null); };
   const leaveRoom = () => { setRoom(null); setMode(null); setSelected(null); setRideIndex(null); setDuel(null); setRetreat(null); setGame(makeGame(seededRandom(0x50414d50))); };
   const rosterOwner = viewer;
   const rosterPieces = game.pieces.filter(p => p.owner === rosterOwner && !['goal', 'sacrificed'].includes(p.status));
@@ -1129,21 +1216,160 @@ const duelOwnPiece = duel && !duel.fourPlayer ? [duelAttacker, duelDefender].fin
   const teamRevealMandatory = !!currentTeamRevealSeat && [duel?.initiatorSeat, duel?.responderSeat].includes(currentTeamRevealSeat);
   const controlsTeamRaiseAnswer = !!duel?.fourPlayer && duel.phase === 'team-raise-answer' && viewerRole === duel.raiseResponderSeat;
   const controlsRetreat = !!retreat && (mode === 'test' || game.pieces.find(piece => piece.id === retreat.pieceId)?.owner === viewer);
-  const canRestart = mode !== null && (mode === 'test' || room?.role === (room?.playerCount === 4 ? 'a' : 'blue'));
+  const canRestart = mode !== null && (mode === 'test' || mode === 'bot' || room?.role === (room?.playerCount === 4 ? 'a' : 'blue'));
   const participantName = (role: PlayerRole) => playerDisplayName(game, role);
   const currentTurnLabel = game.currentSeat ? `${participantName(game.currentSeat)} · equipo ${PLAYER[game.current]}` : participantName(game.current);
   const winnerLabel = game.winner ? game.playerCount === 4 ? FOUR_SEATS.filter(seat => SEAT_TEAM[seat] === game.winner).map(participantName).join(' + ') : participantName(game.winner) : '';
   const retreatDestinations = new Map<string, (Cell | null)[]>();
   retreat?.paths.forEach(path => { const destination = path.at(-1) || null; if (destination) retreatDestinations.set(key(destination), path); });
   const retreatToCamp = retreat?.paths.find(path => !path.at(-1));
+  const duelQuip = duel ? duelChallengeLine(game, duel) : '';
+
+  const beginBotDuel = (action: Extract<BotTurnAction, { kind: 'challenge' }>) => {
+    const attacker = game.pieces.find(piece => piece.id === action.pieceId);
+    if (!attacker || !isBotTeam(attacker.owner) || attacker.owner !== game.current) return;
+    const ranged = action.natureIndex !== null && game.players[attacker.owner].cards[action.natureIndex] === 'boleadora';
+    const legalTargets = ranged ? boleadoraTargetsForPiece(attacker, game.pieces, game.board) : botAttackTargets(attacker, game);
+    if (!legalTargets.some(cell => same(cell, action.target))) return;
+    const defenders = game.pieces.filter(piece => piece.owner !== attacker.owner && piece.status === 'board' && same(piece.position, action.target)).map(piece => piece.id);
+    if (!defenders.length) return;
+    const now = Date.now();
+    setDuel({ attackerId: attacker.id, defenders, defenderId: defenders.length === 1 ? defenders[0] : null, target: action.target, from: attacker.position, entry: attacker.status === 'camp', ranged, cardIndex: action.natureIndex, defenderCardIndex: null, death: false, stake: 'normal', attackerRevealed: false, endsAt: now + DUEL_DURATION_MS, turnRemainingMs: Math.max(0, game.turnEndsAt - now), phase: defenders.length > 1 ? 'choose-defender' : 'attacker' });
+  };
+
+  const performBotTurn = () => {
+    const team = game.current;
+    if (!isBotTeam(team) || duel || retreat || game.winner) return;
+    const action = chooseBotTurnAction(game, team);
+    if (action.kind === 'roll') {
+      const terrain = TERRAIN[randomIndex(TERRAIN.length)];
+      setGame(state => state.current !== team || state.roll ? state : recordRoll(log({ ...state, roll: terrain }, `${playerDisplayName(state, team)} tira el dado: sale ${LABEL[terrain]}.`), terrain, team));
+      return;
+    }
+    if (action.kind === 'challenge') { beginBotDuel(action); return; }
+    if (action.kind === 'goal') {
+      setGame(state => {
+        const piece = state.pieces.find(value => value.id === action.pieceId);
+        if (!piece || state.current !== team || piece.owner !== team || piece.position?.row !== state.board.length - 1 || state.roll !== state.goalTerrain) return state;
+        const current = state.players[team], arrived = current.arrived + 1, players = { ...state.players, [team]: { ...current, arrived } }, winner = arrived >= 2 ? team : null;
+        const pieces = state.pieces.map(value => value.id === piece.id ? { ...value, status: 'goal' as const, position: null } : value);
+        const updated = recordMovement({ ...state, pieces, players, winner, endedAt: winner ? Date.now() : state.endedAt }, piece.id, 1);
+        return completeActivation(log(updated, winner ? `¡${playerDisplayName(state, team)} gana la partida!` : `${playerDisplayName(state, team)} lleva a ${short(piece)} hasta la Meta.`), piece.id);
+      });
+      return;
+    }
+    if (action.kind === 'move') {
+      setGame(state => {
+        const piece = state.pieces.find(value => value.id === action.pieceId);
+        if (!piece || state.current !== team || piece.owner !== team || state.pieces.some(value => value.id !== piece.id && value.status === 'board' && same(value.position, action.destination))) return state;
+        let next = state;
+        if (action.natureIndex !== null && state.players[team].cards[action.natureIndex] === 'cabalgata') {
+          const current = state.players[team], card = current.cards[action.natureIndex];
+          next = bumpPlayerStats(log({ ...state, players: { ...state.players, [team]: { ...current, cards: current.cards.filter((_, index) => index !== action.natureIndex) } }, natureDiscard: [...state.natureDiscard, card] }, `${playerDisplayName(state, team)} juega Cabalgata con ${short(piece)}.`), team, { cabalgatas: 1 });
+        }
+        const latestPiece = next.pieces.find(value => value.id === piece.id)!;
+        const distance = latestPiece.status === 'camp' || !latestPiece.position ? 1 : Math.max(1, Math.abs(action.destination.row - latestPiece.position.row), Math.abs(action.destination.col - latestPiece.position.col));
+        const pieces = next.pieces.map(value => value.id === piece.id ? { ...value, status: 'board' as const, position: action.destination } : value);
+        const moved = recordMovement(log({ ...next, pieces }, `${playerDisplayName(next, team)} mueve a ${short(piece)} hasta la fila ${action.destination.row + 1}${isPulperia(action.destination, next.board) ? ' y entra a la Pulpería.' : '.'}`), piece.id, distance);
+        return completeActivation(moved, piece.id);
+      });
+      return;
+    }
+    if (action.kind === 'redraw') {
+      setGame(state => {
+        const piece = state.pieces.find(value => value.id === action.pieceId);
+        if (!piece || state.current !== team || !piece.position || !isPulperia(piece.position, state.board)) return state;
+        const redrawn = replacePlayedCards(state, [piece.id]);
+        return completeActivation(bumpPlayerStats(log(redrawn, `${playerDisplayName(state, team)} usa la Pulpería para renovar el naipe de ${short(piece)}.`), team, { pulperia: 1 }), piece.id);
+      });
+      return;
+    }
+    if (action.kind === 'stay') {
+      setGame(state => state.current !== team ? state : completeActivation(log(state, `${playerDisplayName(state, team)} mantiene a ${short(state.pieces.find(piece => piece.id === action.pieceId)!)} en su terreno.`), action.pieceId));
+      return;
+    }
+    setGame(state => state.current !== team ? state : passTurn(state, `${playerDisplayName(state, team)} no encontró una jugada posible.`));
+  };
+
+  const performBotDuelDecision = () => {
+    if (!duel || duel.fourPlayer) return;
+    const attacker = game.pieces.find(piece => piece.id === duel.attackerId);
+    const defender = duel.defenderId ? game.pieces.find(piece => piece.id === duel.defenderId) : null;
+    if (!attacker) return;
+    if (duel.phase === 'choose-defender' && isBotTeam(attacker.owner)) {
+      const defenderId = duel.defenders.find(id => !!game.pieces.find(piece => piece.id === id));
+      if (defenderId) chooseDuelDefender(defenderId);
+      return;
+    }
+    if (duel.phase === 'attacker' && isBotTeam(attacker.owner) && defender) {
+      const natureIndex = duel.ranged ? duel.cardIndex : botNatureIndexForTerrain(game, attacker, duel.from);
+      setGame(state => bumpPlayerStats(recordDuelStart(state, attacker.id, defender.id), attacker.owner, { attacks: 1, boleadoras: duel.ranged ? 1 : 0 }));
+      setDuel({ ...duel, cardIndex: natureIndex, phase: 'defender' });
+      return;
+    }
+    if (duel.phase === 'defender' && defender && isBotTeam(defender.owner)) {
+      const natureIndex = botNatureIndexForTerrain(game, defender, duel.target);
+      const strength = cardPower(defender.card) + (natureIndex === null ? 0 : Math.min(3, 12 - cardPower(defender.card)));
+      if (!duel.ranged && strength <= 3) { refuse(); return; }
+      if (!duel.ranged && strength >= 10 && (game.turn + strength) % 3 === 0) { setDuel({ ...duel, defenderCardIndex: natureIndex, phase: 'redouble-answer' }); return; }
+      setDuel(advanceDuelToReveal({ ...duel, defenderCardIndex: natureIndex }, 'normal'));
+      return;
+    }
+    if (duel.phase === 'defender-reveal' && defender && isBotTeam(defender.owner)) {
+      const nature = duel.defenderCardIndex === null ? null : game.players[defender.owner].cards[duel.defenderCardIndex];
+      const terrain = game.board[duel.target.row][duel.target.col];
+      const boost = nature && nature === terrain ? Math.min(3, 12 - cardPower(defender.card)) : 0;
+      if (duel.stake === 'normal' && cardPower(defender.card) + boost >= cardPower(attacker.card) + 2 && cardPower(defender.card) >= 8) { offerRedouble(); return; }
+      revealDefenderAndResolve();
+      return;
+    }
+    if (duel.phase === 'redouble-answer' && isBotTeam(attacker.owner)) {
+      const strength = cardPower(attacker.card);
+      if (strength >= 11) callDuelToDeath();
+      else if (strength >= 6) acceptRedouble();
+      else rejectRedouble();
+      return;
+    }
+    if (duel.phase === 'death-confirmation' && defender && isBotTeam(defender.owner)) {
+      if (cardPower(defender.card) >= 8) acceptDeath(); else rejectDeath();
+      return;
+    }
+    const duelHasHuman = attacker.owner === viewer || defender?.owner === viewer;
+    if (duel.phase === 'outcome' && !duelHasHuman) { continueOutcome(); return; }
+    if (duel.phase === 'replacement' && !duelHasHuman) finishReplacement();
+  };
+
+  useEffect(() => {
+    if (mode !== 'bot' || game.winner) return;
+    const retreatOwner = retreat ? game.pieces.find(piece => piece.id === retreat.pieceId)?.owner : null;
+    const attackerOwner = duel ? game.pieces.find(piece => piece.id === duel.attackerId)?.owner : null;
+    const defenderOwner = duel?.defenderId ? game.pieces.find(piece => piece.id === duel.defenderId)?.owner : null;
+    const botDuelPhase = !!duel && (
+      ['choose-defender', 'attacker', 'redouble-answer'].includes(duel.phase) && !!attackerOwner && isBotTeam(attackerOwner)
+      || ['defender', 'defender-reveal', 'death-confirmation'].includes(duel.phase) && !!defenderOwner && isBotTeam(defenderOwner)
+      || ['outcome', 'replacement'].includes(duel.phase) && !!attackerOwner && !!defenderOwner && isBotTeam(attackerOwner) && isBotTeam(defenderOwner)
+    );
+    const shouldAct = retreat ? !!retreatOwner && isBotTeam(retreatOwner) : duel ? botDuelPhase : isBotTeam(game.current);
+    if (!shouldAct) return;
+    const timer = window.setTimeout(() => {
+      if (retreat) {
+        const preferred = [...retreat.paths].sort((a, b) => (b.at(-1)?.row ?? -1) - (a.at(-1)?.row ?? -1))[0];
+        if (preferred) chooseRetreat(preferred);
+      } else if (duel) performBotDuelDecision();
+      else performBotTurn();
+    }, duel ? 820 : 620);
+    return () => window.clearTimeout(timer);
+    // Cada cambio de instantánea cancela el paso anterior y crea una decisión con el estado más reciente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, game, duel, retreat]);
 
   return <main className={`game-shell player-${viewer}`}>
-    <header className="topbar"><div className="brand-mark">PB</div><div><p className="eyebrow">{mode === 'test' ? 'Modo prueba' : 'Juego online'}</p><h1>Pampa Brava</h1></div><div className="score-strip">{game.teams.map(team => <span className={`team-score ${team}`} key={team}><i />{PLAYER[team]} {game.players[team].arrived}/2</span>)}</div>{room && <div className="room-pill"><small>Sala</small><b>{room.code}</b><span className={room.status}>{room.status === 'active' ? `${room.playerCount} conectados` : `Esperando ${room.playerCount} jugadores`}</span></div>}{mode === 'test' && <div className="room-pill test-pill"><small>Modo</small><b>PRUEBA</b><span className="active">Azul y Rojo en este equipo</span></div>}<button className="header-button ux-help-button" onClick={() => setRules(true)}>Cómo jugar</button>{mode !== null && <button className="header-button" onClick={leaveRoom}>{mode === 'test' ? 'Salir de prueba' : 'Salir de la sala'}</button>}<button className="header-button" onClick={restart} disabled={!canRestart}>Reiniciar partida</button></header>
+    <header className="topbar"><div className="brand-mark">PB</div><div><p className="eyebrow">{mode === 'test' ? 'Modo prueba' : mode === 'bot' ? 'Partida contra la PC' : 'Juego online'}</p><h1>Pampa Brava</h1></div><div className="score-strip">{game.teams.map(team => <span className={`team-score ${team}`} key={team}><i />{PLAYER[team]} {game.players[team].arrived}/2</span>)}</div>{room && <div className="room-pill"><small>Sala</small><b>{room.code}</b><span className={room.status}>{room.status === 'active' ? `${room.playerCount} conectados` : `Esperando ${room.playerCount} jugadores`}</span></div>}{mode === 'test' && <div className="room-pill test-pill"><small>Modo</small><b>PRUEBA</b><span className="active">Azul y Rojo en este equipo</span></div>}{mode === 'bot' && <div className="room-pill bot-pill"><small>Rivales</small><b>{game.playerCount - 1} BOT{game.playerCount > 2 ? 'S' : ''}</b><span className="active">{isMyTurn ? 'Tu turno' : `${currentTurnLabel} está pensando`}</span></div>}<button className="header-button ux-help-button" onClick={() => setRules(true)}>Cómo jugar</button>{mode !== null && <button className="header-button" onClick={leaveRoom}>{mode === 'test' ? 'Salir de prueba' : mode === 'bot' ? 'Salir de la partida' : 'Salir de la sala'}</button>}<button className="header-button" onClick={restart} disabled={!canRestart}>Reiniciar partida</button></header>
     <section className={`play-layout ${isMobileLayout && boardZoom ? 'board-zoomed' : ''}`}>
       {duel && !retreat && <div className={`duel-timer ${duelSecondsLeft <= 10 ? 'urgent' : ''}`} role="timer" aria-label={`${duelSecondsLeft} segundos restantes para el duelo`}><div><small>RELOJ DEL DUELO</small><span>El reloj del turno está pausado</span></div><b>00:{String(duelSecondsLeft).padStart(2, '0')}</b></div>}
       {duel && !retreat && duelAttacker && duelDefender && <div className="duel-gaucho-alerts" role="status" aria-live="polite"><div className={`duel-gaucho-alert attacker ${duelAttacker.owner}`}><span className="duel-alert-portrait"><CharacterArt type={duelAttacker.type} /></span><div><small>GAUCHO ATACANTE</small><b>{short(duelAttacker)}</b><em>{cellDescription(duel.from)}</em></div><strong>ATACA</strong></div><span className="duel-alert-versus">VS</span><div className={`duel-gaucho-alert defender ${duelDefender.owner}`}><span className="duel-alert-portrait"><CharacterArt type={duelDefender.type} /></span><div><small>GAUCHO DEFENSOR</small><b>{short(duelDefender)}</b><em>{cellDescription(duel.target)}</em></div><strong>DEFIENDE</strong></div></div>}
 
-      <section className={`board-wrap ${duel ? 'duel-active' : ''} ${retreat ? 'retreat-active' : ''}`} aria-label="Tablero triangular">{duel && !retreat && duelAttacker && <div className="board-duel-marker"><small>DUELO EN CURSO</small><b>{short(duelAttacker)} → {duelDefender ? short(duelDefender) : 'rival por elegir'}</b><span>{cellDescription(duel.target)}</span></div>}{retreat && <div className="retreat-board-instruction"><small>{retreat.resolution === 'advance' ? controlsRetreat ? 'ELEGÍ TU AVANCE' : 'AVANCE RIVAL' : controlsRetreat ? 'ELEGÍ TU RETIRADA' : 'RETIRADA RIVAL'}</small><b>{retreat.resolution === 'advance' ? controlsRetreat ? `Ganaste con la boleadora: tocá un terreno iluminado para avanzar ${retreat.steps} filas con ${short(game.pieces.find(piece => piece.id === retreat.pieceId)!)}` : 'El rival está eligiendo por dónde avanzar.' : controlsRetreat ? `Tocá un terreno iluminado para retirar a ${short(game.pieces.find(piece => piece.id === retreat.pieceId)!)}` : 'El rival está eligiendo su destino en el tablero.'}</b>{controlsRetreat && retreatToCamp && <button onClick={() => chooseRetreat(retreatToCamp)}>Volver al campamento</button>}</div>}<div className="board-stage"><button className={`goal ${game.goalTerrain} ${goalReachable ? 'reachable' : ''}`} disabled={!goalReachable} onClick={reachGoal} aria-label={`Meta de ${LABEL[game.goalTerrain]}`}><HexOutline /><span>{ICON[game.goalTerrain]}</span><b>META</b><small>{LABEL[game.goalTerrain]}</small></button><div className="board">
+      <section className={`board-wrap ${duel ? 'duel-active' : ''} ${retreat ? 'retreat-active' : ''}`} aria-label="Tablero triangular">{duel && !retreat && duelAttacker && <div className="board-duel-marker"><small>DUELO EN CURSO</small><b>{short(duelAttacker)} → {duelDefender ? short(duelDefender) : 'rival por elegir'}</b><span>{cellDescription(duel.target)}</span><em className="duel-board-quip">“{duelQuip}”</em></div>}{retreat && <div className="retreat-board-instruction"><small>{retreat.resolution === 'advance' ? controlsRetreat ? 'ELEGÍ TU AVANCE' : 'AVANCE RIVAL' : controlsRetreat ? 'ELEGÍ TU RETIRADA' : 'RETIRADA RIVAL'}</small><b>{retreat.resolution === 'advance' ? controlsRetreat ? `Ganaste con la boleadora: tocá un terreno iluminado para avanzar ${retreat.steps} filas con ${short(game.pieces.find(piece => piece.id === retreat.pieceId)!)}` : 'El rival está eligiendo por dónde avanzar.' : controlsRetreat ? `Tocá un terreno iluminado para retirar a ${short(game.pieces.find(piece => piece.id === retreat.pieceId)!)}` : 'El rival está eligiendo su destino en el tablero.'}</b>{controlsRetreat && retreatToCamp && <button onClick={() => chooseRetreat(retreatToCamp)}>Volver al campamento</button>}</div>}<div className="board-stage"><button className={`goal ${game.goalTerrain} ${goalReachable ? 'reachable' : ''}`} disabled={!goalReachable} onClick={reachGoal} aria-label={`Meta de ${LABEL[game.goalTerrain]}`}><HexOutline /><span>{ICON[game.goalTerrain]}</span><b>META</b><small>{LABEL[game.goalTerrain]}</small></button><div className="board">
         {game.board.slice().reverse().map((row, ri) => { const r = game.board.length - 1 - ri; return <div className="board-row" key={r}>{row.map((terrain, col) => { const cell = { row: r, col }, retreatPath = controlsRetreat ? retreatDestinations.get(key(cell)) : undefined, canMoveHere = !retreat && (highlighted.has(key(cell)) || challengeKeys.has(key(cell))), cellInteractive = canMoveHere || !!retreatPath, occupants = game.pieces.filter(p => p.status === 'board' && same(p.position, cell)), duelOrigin = !retreat && !!duel?.from && same(duel.from, cell), duelTarget = !retreat && !!duel && same(duel.target, cell), terrainVariant = (r * 3 + col) % 4; return <div className={`hex ${terrain} terrain-variant-${terrainVariant} ${canMoveHere ? 'reachable' : ''} ${retreatPath ? 'retreat-destination' : ''} ${!retreat && challengeKeys.has(key(cell)) ? 'challenge-cell' : ''} ${duelOrigin ? 'duel-origin' : ''} ${duelTarget ? 'duel-target' : ''}`} role={cellInteractive ? 'button' : undefined} aria-label={retreatPath ? `${retreat?.resolution === 'advance' ? 'Avanzar' : 'Retirarse'} a la fila ${r + 1}, casillero ${col + 1}` : undefined} tabIndex={cellInteractive ? 0 : -1} key={key(cell)} onClick={() => retreatPath ? chooseRetreat(retreatPath) : canMoveHere && chooseDestination(cell)} onKeyDown={event => cellInteractive && (event.key === 'Enter' || event.key === ' ') && (retreatPath ? chooseRetreat(retreatPath) : chooseDestination(cell))}><HexOutline />{retreatPath && <span className={`retreat-label ${retreat?.resolution === 'advance' ? 'advance' : ''}`} aria-hidden="true">{retreat?.resolution === 'advance' ? 'Avanzar aquí' : 'Retirarse aquí'}</span>}<span className={`occupants count-${Math.min(occupants.length, 8)}`}>{occupants.map(p => { const known = isTrucoCardVisible(p, viewerRole), ownCard = pieceCardForRole(p, viewerRole, game.playerCount), cardMark = known ? trucoCardBadge(ownCard) : '●', canSelect = selectable(p), canChallenge = !retreat && p.owner !== viewer && challengeKeys.has(key(cell)) && !!selectedPiece; return <i className={`board-token ${p.owner} ${p.type} ${selected === p.id ? 'selected' : ''} ${canSelect ? 'selectable' : ''} ${canChallenge ? 'challengeable' : ''} ${!retreat && duel?.attackerId === p.id ? 'duel-attacker-target' : ''} ${!retreat && duel?.defenderId === p.id ? 'duel-defender-target' : ''} ${retreat?.pieceId === p.id ? 'retreating' : ''}`} role={canSelect || canChallenge ? 'button' : undefined} tabIndex={canSelect || canChallenge ? 0 : -1} key={p.id} title={canChallenge ? `Desafiar a ${short(p)}` : `${short(p)} · ${known ? trucoCardLabel(ownCard) : 'naipe oculto'}`} aria-label={canChallenge ? `Desafiar a ${short(p)}` : `${PLAYER[p.owner]} ${short(p)}; ${known ? `naipe ${trucoCardLabel(ownCard)}` : 'naipe oculto'}`} onClick={event => { event.stopPropagation(); if (canChallenge) chooseDestination(cell); else selectGaucho(p); }} onKeyDown={event => { if ((canSelect || canChallenge) && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); event.stopPropagation(); if (canChallenge) chooseDestination(cell); else selectGaucho(p); } }}><CharacterArt type={p.type} /><b>{short(p)}</b><span className="combat-stats"><em>{cardMark}</em></span></i>; })}</span></div>; })}</div>; })}
       </div></div><div className="terrain-legend"><span><i className="pampa" /> Pampa</span><span><i className="monte" /> Monte</span><span><i className="sierra" /> Sierra</span>{game.pulperiaEnabled && <span><i className="pulperia" /> Pulpería</span>}<span className="equal-base">En duelo, 12 es el valor más alto y 1 el más bajo</span></div></section>
       <aside className={`turn-status-panel mobile-sheet ${mobileSheet === 'turn' ? 'sheet-open' : ''}`} aria-label="Estado del turno" inert={isMobileLayout && mobileSheet !== 'turn' ? true : undefined}>
@@ -1158,10 +1384,10 @@ const duelOwnPiece = duel && !duel.fourPlayer ? [duelAttacker, duelDefender].fin
           <div className={`turn-timer ${secondsLeft <= 10 ? 'urgent' : ''} ${duel ? 'paused' : ''}`} aria-label={`${secondsLeft} segundos restantes${duel ? '; reloj en pausa' : ''}`}><b>00:{String(secondsLeft).padStart(2, '0')}</b><small>{duel ? 'reloj en pausa' : 'reloj del turno'}</small></div>
           <div className="rival-hand-count" aria-label={`Los rivales tienen ${rivalNatureCount} ${rivalNatureCount === 1 ? 'carta' : 'cartas'} de naturaleza`}><span aria-hidden="true">▣</span><div><b>{rivalNatureCount}</b><small>{rivalNatureCount === 1 ? 'carta rival' : 'cartas rivales'}</small></div></div>
         </div>
-        <div className="turn-guidance" aria-live="polite"><b>{duel ? 'Duelo en curso' : retreat ? 'Elegí la retirada' : isMyTurn ? game.roll ? game.activations.length ? 'Te queda una acción' : 'Elegí tu primer gaucho' : 'Tirá el dado o desafiá' : 'Esperá tu turno'}</b><span>{duel ? 'Seguí los pasos del desafío en el panel de duelo.' : retreat ? 'El gaucho que perdió debe elegir por dónde retroceder.' : isMyTurn ? game.roll ? 'Podés mover según el dado o desafiar a un rival contiguo. Al completar dos acciones, el turno pasa solo.' : 'El dado habilita el movimiento; un rival contiguo puede ser desafiado sin tirarlo.' : `Juega ${currentTurnLabel}. Sus acciones aparecen acá.`}</span></div>
+        <div className="turn-guidance" aria-live="polite"><b>{duel ? 'Duelo en curso' : retreat ? 'Elegí la retirada' : isMyTurn ? game.roll ? game.activations.length ? 'Te queda una acción' : 'Elegí tu primer gaucho' : 'Tirá el dado o desafiá' : mode === 'bot' ? 'La PC está pensando' : 'Esperá tu turno'}</b><span>{duel ? 'Seguí los pasos del desafío en el panel de duelo.' : retreat ? 'El gaucho que perdió debe elegir por dónde retroceder.' : isMyTurn ? game.roll ? 'Podés mover según el dado o desafiar a un rival contiguo. Al completar dos acciones, el turno pasa solo.' : 'El dado habilita el movimiento; un rival contiguo puede ser desafiado sin tirarlo.' : mode === 'bot' ? `${currentTurnLabel} está evaluando su próxima jugada.` : `Juega ${currentTurnLabel}. Sus acciones aparecen acá.`}</span></div>
         {syncNotice && <p className="sync-notice" role="status">{syncNotice}</p>}
         <section className="recent-actions" aria-label="Últimas acciones" aria-live="polite"><b>Últimas acciones</b>{game.log.slice(0, 3).map((entry, index) => <p key={`${game.turn}-${index}-${entry}`}>{entry}</p>)}</section>
-        <div className="mobile-utility-actions"><button onClick={() => setRules(true)}>Cómo jugar</button><button onClick={restart} disabled={!canRestart}>Reiniciar</button><button onClick={leaveRoom}>{mode === 'test' ? 'Salir de prueba' : 'Salir de la sala'}</button></div>
+        <div className="mobile-utility-actions"><button onClick={() => setRules(true)}>Cómo jugar</button><button onClick={restart} disabled={!canRestart}>Reiniciar</button><button onClick={leaveRoom}>{mode === 'test' ? 'Salir de prueba' : mode === 'bot' ? 'Salir de la partida' : 'Salir de la sala'}</button></div>
       </aside>
       {isMobileLayout && !retreat && <button className="board-zoom-toggle" aria-pressed={boardZoom} onClick={() => setBoardZoom(value => !value)}>{boardZoom ? '− Ajustar' : '+ Ampliar'}</button>}
       {isMobileLayout && !retreat && <div className="mobile-nature-tray" aria-label="Cartas de naturaleza y acciones especiales">{player.cards.map((card, index) => <button key={`${card}-${index}`} className={`mini-nature ${card} ${rideIndex === index ? 'armed' : ''}`} onClick={() => setMobileSheet(current => current === 'nature' ? null : 'nature')} aria-label={`${NATURE_LABEL[card]}. Abrir acciones de naturaleza`}><small>Carta {index + 1}</small><b>{NATURE_LABEL[card]}</b></button>)}{isMobileLayout && controlsPulperia && <button className="camp-pulperia" onClick={() => setMobileSheet('nature')}><small>Servicio</small><b>Pulpería</b></button>}{isMobileLayout && !player.sacrificed && <button className="camp-sacrifice" disabled={!isMyTurn || !selectedPiece || !SACRIFICE_NATURE_CARDS.some(card => game.deck.includes(card)) || !!duel || !!retreat || !!game.winner} onClick={() => { setConfirmSacrifice(true); setSacrificeChoice(null); setMobileSheet('nature'); }}><small>Sacrificar</small><b>{selectedPiece ? short(selectedPiece) : 'Elegí gaucho'}</b></button>}</div>}
@@ -1194,11 +1420,13 @@ const duelOwnPiece = duel && !duel.fourPlayer ? [duelAttacker, duelDefender].fin
 
     </section>
     {mode === null && <div className="privacy-overlay lobby-overlay"><div className="privacy-card lobby-card">
-      <div className="wax-seal blue">PB</div><p className="eyebrow">Partida online</p><h2>Una pampa, hasta cuatro jugadores</h2><p>Cada jugador entra desde su dispositivo. En cuatro jugadores, A y C forman el equipo Azul; B y D, el Rojo.</p>
+      <div className="wax-seal blue">PB</div><p className="eyebrow">Partida individual u online</p><h2>Elegí cómo cruzar la Pampa</h2><p>Jugá contra la computadora o creá una sala para compartir la partida desde distintos dispositivos.</p>
       <label className="player-name-field"><span>¿Cómo te llamás?</span><input value={playerName} maxLength={24} autoComplete="name" placeholder="Ejemplo: Nico" onChange={event => setPlayerName(event.target.value)} /><small>Aparecerá en los turnos y habilita la creación de la sala.</small></label>
       <div className="setup-choice"><div><b>¿Con Pulpería?</b><small>{withPulperia ? 'Aparece un terreno especial para renovar o intercambiar naipes.' : 'Partida directa, sólo Pampa, Monte y Sierra.'}</small></div><button className={`setup-switch ${withPulperia ? 'on' : 'off'}`} role="switch" aria-checked={withPulperia} aria-label="Usar Pulpería" onClick={() => setWithPulperia(value => !value)}><span className="setup-switch-track" aria-hidden="true"><i /></span><b>{withPulperia ? 'Activada' : 'Desactivada'}</b></button></div>
+      <div className="join-divider solo-divider"><span>Jugar contra la PC</span></div><div className="bot-mode-grid"><button className="mode-choice bot-choice" onClick={() => startBotGame(2)}><b>Contra 1 bot</b><small>Vos contra Bot Federal</small></button><button className="mode-choice bot-choice two-bots" onClick={() => startBotGame(3)}><b>Contra 2 bots</b><small>Azul, Rojo y Verde</small></button></div>
+      <div className="join-divider online-divider"><span>Crear una sala online</span></div>
       <div className="mode-grid"><button className="mode-choice featured" disabled={roomBusy || !playerName.trim()} onClick={() => createRoom(2)}><b>{roomBusy ? 'Preparando la sala…' : 'Crear sala de 2'}</b><small>Azul contra Rojo</small></button><button className="mode-choice featured three-player" disabled={roomBusy || !playerName.trim()} onClick={() => createRoom(3)}><b>{roomBusy ? 'Preparando la sala…' : 'Crear sala de 3'}</b><small>Azul, Rojo y Verde</small></button><button className="mode-choice featured four-player" disabled={roomBusy || !playerName.trim()} onClick={() => createRoom(4)}><b>{roomBusy ? 'Preparando la sala…' : 'Crear sala de 4'}</b><small>A + C contra B + D</small></button></div>
-      <button className="mode-choice test-shortcut" onClick={startTest}><b>Acceso rápido de prueba</b><small>Jugá Azul y Rojo en este dispositivo, sin crear una sala</small></button><div className="join-divider"><span>¿Ya tenés un código?</span></div><div className="join-form"><input value={roomCode} maxLength={6} placeholder="CÓDIGO DE SALA" aria-label="Código de sala" autoCapitalize="characters" autoCorrect="off" autoComplete="off" spellCheck={false} onChange={event => setRoomCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} onKeyDown={event => event.key === 'Enter' && joinRoom()} /><button className="primary" disabled={roomBusy || roomCode.length < 6 || !playerName.trim()} onClick={joinRoom}>{roomBusy ? 'Conectando…' : 'Entrar a la sala'}</button></div>{roomError && <p className="room-error">{roomError}</p>}
+      <div className="join-divider"><span>¿Ya tenés un código?</span></div><div className="join-form"><input value={roomCode} maxLength={6} placeholder="CÓDIGO DE SALA" aria-label="Código de sala" autoCapitalize="characters" autoCorrect="off" autoComplete="off" spellCheck={false} onChange={event => setRoomCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} onKeyDown={event => event.key === 'Enter' && joinRoom()} /><button className="primary" disabled={roomBusy || roomCode.length < 6 || !playerName.trim()} onClick={joinRoom}>{roomBusy ? 'Conectando…' : 'Entrar a la sala'}</button></div>{roomError && <p className="room-error">{roomError}</p>}
     </div></div>}
     {room?.status === 'waiting' && <div className="privacy-overlay lobby-overlay"><div className="privacy-card waiting-room"><div className="wax-seal blue">PB</div><p className="eyebrow">Sala creada</p><h2>Invitá a los jugadores</h2><p>Compartí este código. La partida comienza al reunirse los {room.playerCount} jugadores.</p><strong className="room-code">{room.code}</strong><div className="waiting-turn"><span className="sync-dot" /><b>Esperando jugadores…</b><small>{`${participantName(room.role)} · equipo ${PLAYER[roleTeam(room.role)]}. La sala se activará cuando estén todos.`}</small></div><button className="text-button" onClick={leaveRoom}>Cancelar sala</button></div></div>}
     {duel && !retreat && (!['choose-defender', 'attacker'].includes(duel.phase) || controlsAttack) && <DuelPanel phase={duel.phase}>{!['outcome', 'replacement'].includes(duel.phase) && <><div className="duel-brief"><div className="duel-route"><div className={`duelist ${duelAttacker?.owner || 'blue'}`}><span className="duelist-portrait"><CharacterArt type={duelAttacker?.type || 'faconero'} /></span><small>ATACANTE</small><b>{duelAttacker ? short(duelAttacker) : 'Gaucho'}</b><em>{cellDescription(duel.from)}</em></div><div className="duel-arrow"><span>DESAFÍA</span><b>→</b><em>{cellDescription(duel.target)}</em></div><div className={`duelist ${duelDefender?.owner || nextTeam(duelAttacker?.owner || 'blue', game.teams)}`}><span className="duelist-portrait"><CharacterArt type={duelDefender?.type || 'faconero'} /></span><small>DEFENSOR</small><b>{duelDefender ? short(duelDefender) : 'Por elegir'}</b><em>{cellDescription(duel.target)}</em></div></div><div className={`power-commitment ${hasDuelNature ? 'active' : 'inactive'}`}><span>{hasDuelNature ? '⚡' : '—'}</span><div><small>CARTAS DE NATURALEZA</small><b>{duel.cardIndex !== null ? 'El atacante está usando una carta de naturaleza.' : 'El atacante no usa carta extra'}{duel.death && (duel.defenderCardIndex !== null ? ' · El defensor está usando una carta de naturaleza.' : ' · Defensa sin carta extra')}</b></div></div></div><DuelHandInfo own={duelOwnPiece} attacker={duelAttacker} viewer={duelViewer} natureCommitted={duel.cardIndex !== null} ownNature={controlsAttack ? duelNature : null} attackerRevealed={duel.attackerRevealed} ownNatureNote={duelNature && controlsAttack ? natureEffect(duelNature, terrainAt(duel.from), duelAttacker, attackerPlace).text : undefined} locator={isMobileLayout ? <DuelMiniBoard board={game.board} from={duel.from} target={duel.target} /> : null} /></>}{duel.phase === 'choose-defender' && (controlsAttack ? <><p className="eyebrow">Varios rivales</p><GauchoDialogue piece={duelAttacker} speaker={`${short(duelAttacker!)} · Atacante`}>¡Que salga uno a sostener con coraje lo que defiende con la mirada!</GauchoDialogue><h2 className="choice-title">¿A quién desafiás?</h2><div className="choice-grid defender-choices">{duel.defenders.map(id => { const p = game.pieces.find(x => x.id === id)!; return <button key={id} onClick={() => chooseDuelDefender(id)}><span className={`character-token ${p.owner}`}><CharacterArt type={p.type} /></span><b>{short(p)}</b><small>Naipe oculto</small></button>; })}</div><button className="secondary duel-back" onClick={cancelDuelPlanning}>Volver al tablero</button></> : <WaitingStep piece={duelAttacker} text="El atacante está eligiendo a quién desafiar." />)}

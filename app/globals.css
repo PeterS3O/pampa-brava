@@ -2988,3 +2988,25 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
     margin:-59px 0 0 8px!important;
   }
 }
+
+/* Partidas individuales y color gauchesco fuera del flujo de decisiones. */
+.bot-mode-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:7px 0 9px}
+.lobby-card .bot-choice{min-height:54px;padding:9px 10px;border-color:#72532e;background:linear-gradient(145deg,#fff5d8,#dfbe79);box-shadow:inset 0 0 0 2px #fff8e67a;color:#442d19}
+.lobby-card .bot-choice.two-bots{border-color:#315b3d;background:linear-gradient(145deg,#edf1d8,#b7cc8b)}
+.lobby-card .bot-choice b{font-size:13px}.lobby-card .bot-choice small{font-size:9px}
+.lobby-card .solo-divider{margin-top:8px}.lobby-card .online-divider{margin-top:3px}
+.bot-pill{border-color:#d2a14d;background:#49371f}.bot-pill b{color:#f2cf82}
+.board-duel-marker .duel-board-quip{display:-webkit-box;margin-top:5px;padding-top:5px;overflow:hidden;border-top:1px solid #9b75484d;color:#593820;font:italic 11px/1.25 Georgia,serif;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+@media(min-width:901px){.board-duel-marker:has(.duel-board-quip){max-width:260px}}
+@media(max-width:900px){
+  .bot-mode-grid{gap:5px;margin:5px 0 7px}
+  .lobby-card .bot-choice{min-height:46px;padding:6px}
+  .lobby-card .bot-choice b{font-size:11px}.lobby-card .bot-choice small{font-size:7px}
+  .lobby-card .solo-divider,.lobby-card .online-divider{margin-top:4px}
+  .board-duel-marker .duel-board-quip{font-size:9px;-webkit-line-clamp:1}
+}
+@media(max-height:720px){
+  .lobby-card .solo-divider,.lobby-card .online-divider{font-size:6px}
+  .bot-mode-grid{margin:4px 0 5px}
+  .lobby-card .bot-choice{min-height:40px}
+}
