@@ -2976,3 +2976,15 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
 .match-player-row{grid-template-columns:minmax(0,1.9fr) repeat(7,minmax(34px,1fr))!important}
 .match-player-row.head>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:900px){.match-extra{grid-template-columns:minmax(0,1fr)!important}.match-player-row{grid-template-columns:minmax(0,1.5fr) repeat(7,minmax(26px,1fr))!important}}
+
+/* La decisión posterior al dado conserva el mismo aire interior que su marco. */
+@media(min-width:901px){
+  .game-shell .play-layout .action-panel .roll-column{
+    grid-template-rows:auto minmax(52px,auto)!important;
+  }
+  .game-shell .play-layout .action-panel>.action-flow:not(.action-flow-expanded):not(.action-flow-escape){
+    width:calc(100% - 192px)!important;
+    max-width:calc(100% - 192px)!important;
+    margin:-59px 0 0 8px!important;
+  }
+}
