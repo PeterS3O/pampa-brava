@@ -6,12 +6,12 @@ import ts from 'typescript';
 
 const source = readFileSync(new URL('../app/game.tsx', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(
-  source + '\nexport { makeDuelDeck, makeNatureDeck, takeNatureCard, replaceCardRefs, replacePlayedCards, boleadoraTargetsForPiece, resolveDuelCards, makeGame, canEnterByMovementDie, passTurn, completeActivation, resolveBoleadoraPositions, advanceDuelToReveal, makeRaiseRefusalOutcome, recordDuelStart, recordDuelResult, recordMovement };',
+  source + '\nexport { makeDuelDeck, makeNatureDeck, takeNatureCard, replaceCardRefs, replacePlayedCards, boleadoraTargetsForPiece, resolveDuelCards, makeGame, canEnterByMovementDie, passTurn, completeActivation, resolveBoleadoraPositions, advanceDuelToReveal, makeRaiseRefusalOutcome, recordDuelStart, recordDuelResult, recordMovement, boleadoraAdvanceOptions, resolveBoleadoraAdvance, resolveRangedRetreat };',
   { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } },
 ).outputText;
 const exports = {};
 runInNewContext(compiled, { exports, require: () => ({}) });
-const { makeDuelDeck, makeNatureDeck, takeNatureCard, replaceCardRefs, replacePlayedCards, boleadoraTargetsForPiece, resolveDuelCards, makeGame, canEnterByMovementDie, passTurn, completeActivation, resolveBoleadoraPositions, advanceDuelToReveal, makeRaiseRefusalOutcome, recordDuelStart, recordDuelResult, recordMovement } = exports;
+const { makeDuelDeck, makeNatureDeck, takeNatureCard, replaceCardRefs, replacePlayedCards, boleadoraTargetsForPiece, resolveDuelCards, makeGame, canEnterByMovementDie, passTurn, completeActivation, resolveBoleadoraPositions, advanceDuelToReveal, makeRaiseRefusalOutcome, recordDuelStart, recordDuelResult, recordMovement, boleadoraAdvanceOptions, resolveBoleadoraAdvance, resolveRangedRetreat } = exports;
 
 test('la baraja propia contiene cuatro cartas de cada valor del 1 al 12', () => {
   const deck = makeDuelDeck(() => 0.5);
@@ -263,6 +263,85 @@ test('la boleadora desplaza al ganador hacia adelante y al perdedor hacia atrás
   const defender = moved.pieces.find(piece => piece.id === 'red-g1');
   assert.equal(attacker.position.row, 3);
   assert.equal(defender.position.row, 2);
+});
+
+test('si el defensor gana la boleadora, mantiene su casillero y sólo retrocede el atacante', () => {
+  const board = Array.from({ length: 7 }, (_, row) => Array.from({ length: 8 - row }, () => 'pampa'));
+  const game = {
+    board,
+    pieces: [
+      { id: 'blue-g1', owner: 'blue', status: 'board', position: { row: 3, col: 2 } },
+      { id: 'red-g1', owner: 'red', status: 'board', position: { row: 4, col: 1 } },
+    ],
+  };
+  const duel = { attackerId: 'blue-g1', defenderId: 'red-g1' };
+  const moved = resolveBoleadoraPositions(game, duel, 'defender', 2);
+  const attacker = moved.pieces.find(piece => piece.id === 'blue-g1');
+  const defender = moved.pieces.find(piece => piece.id === 'red-g1');
+  assert.deepEqual(defender.position, { row: 4, col: 1 });
+  assert.equal(attacker.position.row, 1);
+});
+
+test('si el atacante gana la boleadora, avanza desde su casillero sin tomar el del defensor', () => {
+  const board = Array.from({ length: 7 }, (_, row) => Array.from({ length: 8 - row }, () => 'pampa'));
+  const game = {
+    board,
+    pieces: [
+      { id: 'blue-g1', owner: 'blue', status: 'board', position: { row: 1, col: 2 } },
+      { id: 'red-g1', owner: 'red', status: 'board', position: { row: 5, col: 1 } },
+    ],
+  };
+  const duel = { attackerId: 'blue-g1', defenderId: 'red-g1' };
+  const moved = resolveBoleadoraPositions(game, duel, 'attacker', 2);
+  const attacker = moved.pieces.find(piece => piece.id === 'blue-g1');
+  const defender = moved.pieces.find(piece => piece.id === 'red-g1');
+  assert.equal(attacker.position.row, 3);
+  assert.notDeepEqual(attacker.position, { row: 5, col: 1 });
+  assert.equal(defender.position.row, 3);
+});
+
+test('si el atacante gana con boleadora, el avance no se resuelve solo: elige entre casilleros libres', () => {
+  const board = Array.from({ length: 7 }, (_, row) => Array.from({ length: 8 - row }, () => 'pampa'));
+  const game = {
+    board,
+    pieces: [
+      { id: 'blue-g1', owner: 'blue', status: 'board', position: { row: 1, col: 2 } },
+      { id: 'red-g1', owner: 'red', status: 'board', position: { row: 5, col: 1 } },
+      { id: 'red-g2', owner: 'red', status: 'board', position: { row: 3, col: 1 } },
+    ],
+  };
+  const duel = { attackerId: 'blue-g1', defenderId: 'red-g1' };
+  const afterRetreat = resolveBoleadoraPositions(game, duel, 'attacker', 2, false);
+  assert.deepEqual(afterRetreat.pieces.find(piece => piece.id === 'blue-g1').position, { row: 1, col: 2 });
+  assert.equal(afterRetreat.pieces.find(piece => piece.id === 'red-g1').position.row, 3);
+  const options = boleadoraAdvanceOptions(afterRetreat, 'blue-g1', 2);
+  assert.ok(options.length >= 1);
+  for (const cell of options) {
+    assert.equal(cell.row, 3);
+    assert.ok(!afterRetreat.pieces.some(piece => piece.id !== 'blue-g1' && piece.position && piece.position.row === cell.row && piece.position.col === cell.col));
+  }
+  const choice = { pieceId: 'blue-g1', attackerId: 'blue-g1', resolution: 'advance', steps: 2, paths: options.map(cell => [cell]) };
+  const moved = resolveBoleadoraAdvance(afterRetreat, choice, options[0]);
+  assert.deepEqual(moved.pieces.find(piece => piece.id === 'blue-g1').position, options[0]);
+  assert.equal(resolveBoleadoraAdvance(afterRetreat, choice, { row: 1, col: 3 }), null, 'un casillero no ofrecido se rechaza');
+  assert.equal(resolveBoleadoraAdvance(afterRetreat, choice, { row: 3, col: 1 }), null, 'un casillero ocupado se rechaza');
+});
+
+test('en la boleadora el perdedor elige su retirada entre las rutas ofrecidas', () => {
+  const game = {
+    pieces: [
+      { id: 'blue-g1', owner: 'blue', status: 'board', position: { row: 1, col: 2 } },
+      { id: 'red-g1', owner: 'red', status: 'board', position: { row: 5, col: 1 } },
+      { id: 'red-g2', owner: 'red', status: 'board', position: { row: 3, col: 2 } },
+    ],
+  };
+  const paths = [[{ row: 4, col: 1 }, { row: 3, col: 1 }], [{ row: 4, col: 2 }, { row: 3, col: 3 }]];
+  const choice = { pieceId: 'red-g1', attackerId: 'blue-g1', resolution: 'ranged-retreat', steps: 2, paths };
+  const moved = resolveRangedRetreat(game, choice, { row: 3, col: 3 });
+  assert.deepEqual(moved.pieces.find(piece => piece.id === 'red-g1').position, { row: 3, col: 3 });
+  assert.equal(resolveRangedRetreat(game, choice, { row: 5, col: 2 }), null, 'una casilla lateral se rechaza');
+  assert.equal(resolveRangedRetreat(game, choice, { row: 3, col: 2 }), null, 'una casilla ocupada se rechaza');
+  assert.equal(resolveRangedRetreat(game, { ...choice, resolution: 'duel' }, { row: 3, col: 3 }), null);
 });
 
 test('al agotarse el mazo de duelo, mezcla los descartes y vuelve a repartir', () => {

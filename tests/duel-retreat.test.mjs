@@ -166,3 +166,49 @@ test('desde el campamento puede desafiar cualquier rival de la primera fila', ()
   const targets = attackTargetsForPiece(attacker, [attacker, ...rivals], board);
   assert.deepEqual(targets.map(target => `${target.row}-${target.col}`), ['0-1', '0-6']);
 });
+
+test('las rutas de retirada sólo bajan, nunca van hacia un costado', () => {
+  for (let row = 1; row < 7; row += 1) {
+    for (let col = 0; col < 8 - row; col += 1) {
+      for (const steps of [2, 3, 4]) {
+        for (const path of availableRetreatPaths({ row, col }, steps, [], 'x')) {
+          let prev = { row, col };
+          for (const cell of path) {
+            if (!cell) break;
+            assert.equal(cell.row, prev.row - 1, 'cada paso baja exactamente una fila');
+            assert.ok(cell.col === prev.col || cell.col === prev.col + 1, 'sólo los dos casilleros de abajo');
+            prev = cell;
+          }
+        }
+      }
+    }
+  }
+});
+
+test('una casilla lateral o no iluminada es rechazada y no modifica la partida', () => {
+  const loserId = defenderId;
+  const paths = availableRetreatPaths(target, 2, game.pieces.filter(value => value.id !== attackerId), loserId);
+  const retreat = { pieceId: loserId, attackerId, resolution: 'duel', paths };
+  const outcomeDuel = { ...duel, phase: 'outcome', outcome: { loserId } };
+  for (const lateral of [{ row: 3, col: 1 }, { row: 3, col: 3 }, { row: 2, col: 2 }, { row: 1, col: 0 }]) {
+    assert.equal(resolveRetreatPositions(game, outcomeDuel, retreat, lateral), null);
+  }
+  assert.equal(piece(game, loserId).position.row, target.row);
+});
+
+test('no se puede retirar a una casilla ocupada aunque haya estado iluminada', () => {
+  const blocker = { id: 'blue-g2', owner: 'blue', status: 'board', position: { row: 1, col: 2 } };
+  const crowded = { ...game, pieces: [...game.pieces, blocker] };
+  const retreat = { pieceId: defenderId, attackerId, resolution: 'duel', paths: [[{ row: 2, col: 2 }, { row: 1, col: 2 }]] };
+  assert.equal(resolveRetreatPositions(crowded, { ...duel, phase: 'outcome', outcome: { loserId: defenderId } }, retreat, { row: 1, col: 2 }), null);
+});
+
+test('si la retirada supera la primera fila, el perdedor vuelve al campamento', () => {
+  const paths = availableRetreatPaths({ row: 1, col: 2 }, 2, [], defenderId);
+  assert.ok(isForcedCampRetreat(paths));
+  const blockedAll = availableRetreatPaths({ row: 3, col: 0 }, 1, [
+    { id: 'b1', owner: 'blue', status: 'board', position: { row: 2, col: 0 } },
+    { id: 'b2', owner: 'blue', status: 'board', position: { row: 2, col: 1 } },
+  ], 'red-g1');
+  assert.ok(isForcedCampRetreat(blockedAll));
+});

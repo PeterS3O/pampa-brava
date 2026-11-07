@@ -148,7 +148,12 @@ Permite saltar una fila. El destino debe estar libre y coincidir con el terreno 
 
 ### Boleadora
 
-Permite desafiar a un rival a cualquier distancia. El defensor no puede rechazar ese ataque, aunque sí puede redoblar. El resultado mueve al ganador hacia adelante y al perdedor hacia atrás según la apuesta: 2 filas en duelo normal, 3 con redoble y 4 a muerte.
+Permite desafiar a un rival a cualquier distancia. El defensor no puede rechazar ese ataque, aunque sí puede redoblar. La apuesta es de 2 filas en duelo normal, 3 con redoble y 4 a muerte, y los gauchos nunca intercambian lugares:
+
+- **Si gana el atacante:** primero el defensor elige su ruta y retrocede la cantidad apostada; después el atacante avanza esas filas desde su propio casillero, eligiendo a cuál de los casilleros libres llega.
+- **Si gana el defensor:** mantiene su casillero, sin ganar filas, y el atacante elige su ruta para retroceder la cantidad apostada.
+
+Las retiradas siguen las reglas generales de la sección 5.
 
 ### Sacrificio
 

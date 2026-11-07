@@ -2792,3 +2792,103 @@ button:focus-visible,input:focus-visible,[role="button"]:focus-visible,summary:f
   /* La pirámide se centra en el hueco entre el panel de turno y la columna derecha */
   .board-stage{left:calc(2*(var(--turn-rail) + 4px + var(--hex-w)*2.5) - (100vw - var(--side-rail)))}
 }
+
+/* — Losetas del tablero: marco uniforme dibujado por CSS —
+   El arte trae una doble línea pintada con grosor distinto en cada lado y restos
+   de las casillas vecinas en las puntas. Se recorta ese borde agrandando el arte
+   y se dibuja un marco parejo: línea exterior de tinta + filete dorado. */
+.board-stage .hex,
+.board-stage .goal{
+  isolation:isolate;
+  background-color:#2f1f12!important;
+}
+.board-stage .hex::after,
+.board-stage .goal::after{
+  content:''!important;
+  position:absolute;
+  z-index:-1;
+  inset:1px;
+  display:block;
+  background:linear-gradient(160deg,#f3d58a,#b8873a);
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+  pointer-events:none;
+}
+.board-stage .hex::before,
+.board-stage .goal::before{
+  inset:2.6px!important;
+  background-size:113% 113%!important;
+  background-position:center!important;
+}
+@media(max-width:900px){
+  .board-stage .hex::after,.board-stage .goal::after{inset:.8px}
+  .board-stage .hex::before,.board-stage .goal::before{inset:1.8px!important}
+}
+
+/* — Escritorio: resultado del dado completo y decisiones del duelo sin huecos — */
+@media(min-width:901px){
+  .game-shell .play-layout .action-panel .roll-column{grid-template-columns:minmax(0,1fr) minmax(150px,max-content)!important}
+  .game-shell .play-layout .action-panel .roll-column>.dice-result{min-width:150px!important;min-height:52px!important;height:auto!important;padding:6px 12px 6px 8px!important;gap:9px!important;overflow:visible!important}
+  .game-shell .play-layout .action-panel .roll-column>.dice-result>span{flex:0 0 36px!important;width:36px!important;height:36px!important;font-size:19px!important}
+  .game-shell .play-layout .action-panel .roll-column>.dice-result>div{min-width:0;overflow:visible!important}
+  .game-shell .play-layout .action-panel .roll-column>.dice-result b{overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important}
+
+  .duel-panel-shell.duel-decision .duel-panel{justify-content:flex-start}
+  .duel-panel-shell.duel-decision .choice-grid.nature-choices{flex:1 1 auto;min-height:96px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important;grid-auto-rows:minmax(0,1fr);align-content:stretch}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:12px;height:100%}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>.nature-card-art{flex:0 0 auto;width:auto;height:min(250px,30vh);max-height:250px!important;max-width:100%;aspect-ratio:5/7}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child{text-align:center}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child b{font-size:15px}
+  .duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child small{font-size:12px}
+  .duel-panel-shell.duel-decision .duel-force-cards{flex:1 1 auto;display:flex;align-items:center;justify-content:center}
+  .duel-panel-shell.duel-decision .duel-panel:not(:has(.nature-choices)) .challenge-status{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:14px 8px;border:0;background:transparent;text-align:center;font-size:17px;line-height:1.45;color:#3f2e1c}
+}
+/* La ilustración de la carta del duelo se adapta al alto que queda libre */
+.duel-panel-shell.duel-decision .nature-choices.illustrated button>.nature-card-art{flex:1 1 0!important;min-height:48px!important;height:auto!important;max-height:250px!important;width:auto!important;max-width:100%!important;aspect-ratio:5/7}
+.duel-panel-shell.duel-decision .nature-choices.illustrated button{min-height:0;overflow:hidden}
+.duel-panel-shell.duel-decision .nature-choices.illustrated button>span:last-child{flex:0 0 auto}
+
+/* — Duelo: cartas de naturaleza visibles (potencia +3 o farol) — */
+.nature-choices.illustrated button{position:relative}
+.nature-effect-badge{position:absolute;z-index:2;top:6px;right:6px;padding:4px 8px;border-radius:999px;font:900 11px/1 Arial,sans-serif;font-style:normal;letter-spacing:.03em;box-shadow:0 1px 2px #3a261433}
+.effect-boost .nature-effect-badge{background:linear-gradient(160deg,#f3d58a,#c8922f);color:#3d2410;border:1px solid #8a5a1c}
+.effect-bluff .nature-effect-badge{background:#e3dacb;color:#5d4f3c;border:1px dashed #8a7a62}
+.nature-choices.illustrated button.chosen{outline:3px solid #c8922f;outline-offset:2px;background:#fff3cf}
+.nature-choices.illustrated button.chosen.effect-bluff{outline-color:#8a7a62;background:#f1ebdf}
+
+.duel-nature-pending{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:2px 0 6px}
+.nature-chip{display:inline-flex;align-items:center;padding:5px 10px;border:1px solid #c8a76a;border-radius:999px;background:#f6e7c4;color:#4a3420;font:700 11px/1.2 Arial,sans-serif}
+.nature-chip.hidden-nature{border-color:#2c3a31;background:#3d4f43;color:#fff3d6}
+
+.duel-force-cards>div{position:relative}
+.duel-nature-stamp{position:absolute;z-index:3;top:20px;right:-12px;display:grid;place-items:center;min-width:46px;height:46px;padding:0 6px;font-style:normal;pointer-events:none}
+.duel-nature-stamp.boost{border:2px solid #fff3c8;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe8a6,#c8922f 70%);color:#3d2410;font:900 17px/1 Georgia,serif;box-shadow:0 0 0 2px #8a5a1c,0 4px 10px #3a261466;transform:rotate(-8deg)}
+.duel-nature-stamp.bluff{height:auto;padding:5px 8px;border:2px dashed #7d6d55;border-radius:6px;background:#efe7d8e8;color:#5d4f3c;font:900 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;box-shadow:0 2px 6px #3a261433;transform:rotate(-12deg)}
+.duel-nature-verdict{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 9px 6px 6px;border:1px solid;border-radius:9px;text-align:left}
+.duel-nature-verdict .nature-card-art{flex:0 0 auto;width:34px!important;height:48px!important;max-height:none!important}
+.duel-nature-verdict>div{display:grid;gap:1px;min-width:0}
+.duel-nature-verdict small{font:900 9px/1.1 Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#7c5a34}
+.duel-nature-verdict b{font:800 13px/1.15 Georgia,serif;color:#3d2a18}
+.duel-nature-verdict em{font:italic 11px/1.2 Arial,sans-serif;color:#6b5a42}
+.duel-nature-verdict.boost{border-color:#c8922f;background:#fff3cf;box-shadow:inset 0 0 0 2px #fff9e6}
+.duel-nature-verdict.boost b{color:#6b4410}
+.duel-nature-verdict.bluff{border-color:#b9ab90;border-style:dashed;background:#efe9dc}
+.duel-nature-verdict.bluff .nature-card-art{filter:grayscale(.75) opacity(.75)}
+
+/* — Repliegue: instrucción visible y gaucho que se retira destacado — */
+.board-token.retreating{z-index:8;box-shadow:0 0 0 3px #f6d78a,0 0 14px 4px #e0a22e99}
+@media(max-width:900px){
+  .retreat-board-instruction{top:8px!important;right:8px!important;left:8px!important;z-index:20!important;max-width:none!important;gap:4px!important;padding:10px 12px!important;border-width:2px!important}
+  .retreat-board-instruction small{font-size:10px!important;letter-spacing:.1em}
+  .retreat-board-instruction b{font-size:13px!important;line-height:1.3}
+  .retreat-board-instruction button{min-height:44px;padding:8px 12px!important;font-size:12px!important}
+}
+/* El ::after de la casilla ahora dibuja el marco: el cartel de retirada es un elemento propio */
+.hex .retreat-label{position:absolute;z-index:8;top:44%;left:50%;transform:translate(-50%,-50%);padding:3px 6px;border:1px solid #fff3b7;border-radius:7px;background:#8e352ce6;color:#fff9e8;font:900 8px/1 Arial,sans-serif;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;box-shadow:0 2px 5px #25180d8c;pointer-events:none}
+@media(max-width:900px){.hex .retreat-label{width:88%;padding:2px 1px;font-size:6px;line-height:1.1;letter-spacing:0;text-align:center;white-space:normal}}
+@media(min-width:901px){
+  .retreat-board-instruction{top:12px!important;left:calc(clamp(205px,20vw,254px) + 30px)!important;z-index:20!important;max-width:min(420px,calc(100vw - var(--side-rail) - clamp(205px,20vw,254px) - 60px))!important;padding:11px 14px!important;border-width:2px!important}
+  .retreat-board-instruction small{font-size:10px!important;letter-spacing:.1em}
+  .retreat-board-instruction b{font-size:14px!important;line-height:1.3}
+}
+.hex .retreat-label{max-width:88%;white-space:normal;text-align:center;line-height:1.1}
+.hex .retreat-label.advance{border-color:#e3f4d6;background:#2f6b3fe6}
